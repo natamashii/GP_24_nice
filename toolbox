@@ -12,7 +12,7 @@ import h5py
 #import statsmodels
 
 # function for saving data as HDF5 (stolen from David)
-def save_hdf5(self, list_of_data_arrays, list_of_labels, new_directory: str, export_path: str, permission='a'):
+def save_hdf5(list_of_data_arrays, list_of_labels, new_directory: str, export_path: str, permission='a'):
     print('save data to ' + export_path)
     permission = permission
     with h5py.File(export_path, permission) as f:
@@ -21,20 +21,23 @@ def save_hdf5(self, list_of_data_arrays, list_of_labels, new_directory: str, exp
             gr[list_of_labels[i]] = list_of_data_arrays[i]
 
 # function to load an HDF5 file (stolen from David)
-def load_hdf5(self, import_path: str):
-    print('load from HDF5...')
+def load_hdf5(import_path: str, name: str):
+    print("load from HDF5...")
     data_dict = {}
-    f = h5py.File(import_path, 'r')
-    for group in f.keys():
-        print(group)
+    f = h5py.File(import_path, "r")
+    names = list(f.keys())
+    names_idx = [i for i, s in enumerate(f.keys()) if name in s]
+    for g_idx in names_idx:
+        group = names[g_idx]
+        current_group = f[group]
         data_dict[group] = {}
-        for dset in f[group].keys():
-            data_dict[group][dset] = f[group][dset][()]
+        for subgrp in current_group.keys():
+            data_dict[group][subgrp] = f[group][subgrp][()]
     f.close()
     return data_dict
 
 # Function for Progressbar, Credits to David
-def __printProgressBar(self, iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█',
+def __printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█',
                        printEnd="\r"):
     """
     Call in a loop to create terminal progress bar
@@ -57,7 +60,7 @@ def __printProgressBar(self, iteration, total, prefix='', suffix='', decimals=1,
         print(Fore.RESET)
 
 # function to make plots more aesthetic
-def plot_beautiful(self, ax, xmin=None, xmax=None, ymin=None, ymax=None, step=None,
+def plot_beautiful(ax, xmin=None, xmax=None, ymin=None, ymax=None, step=None,
                    xlabel="", ylabel="", title="", legend=True):
     ax.spines[["top", "right"]].set_visible(False)  # toggle off top & right ax spines
     if not xmin == xmax:
