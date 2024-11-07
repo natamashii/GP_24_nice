@@ -42,6 +42,35 @@ def load_hdf5(import_path: str, name: str):
     f.close()
     return data_dict
 
+def extract_mov_dot(datatable):
+    """
+    extracts all phases and their data containing a visual name 'SingleDotRotatingBackAndForth'
+    and creates a new dictionary only containing these
+
+    Parameters
+    ----------
+    datatable : dict
+        display file after loading using natalies load_hdf5 function
+
+    Returns
+    -------
+    valid_data : dict
+        contains all phases with moving dot trials
+
+    """
+    print("extracting moving dot phases")
+    # get phases of interest (remove all lines that are interesting)
+    valid_phases = np.ones(len(datatable))    
+    for i in range(len(datatable)):           #loop over all phases
+        if datatable["phase"+str(i)]['__visual_name'] != 'SingleDotRotatingBackAndForth':
+            valid_phases[i] = 0             #get the indices of all phases 
+    valid_indices = np.where(valid_phases == True)[0]  #get the indices of the phases with moving dots
+    valid_data = {}
+    for i in range(len(valid_indices)):     #loop over valid phases
+        valid_data[i] = {f"phase{valid_indices[i]}": datatable[f"phase{valid_indices[i]}"]}   #add keys and the data behind to the new dictionary
+    return valid_data
+
+
 # Function for Progressbar, Credits to David
 def __printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█',
                        printEnd="\r"):
@@ -79,3 +108,4 @@ def plot_beautiful(ax, xmin=None, xmax=None, ymin=None, ymax=None, step=None,
     if legend:
         # move legend to right & outside of plot
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., markerscale=5)
+        
