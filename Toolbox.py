@@ -65,9 +65,10 @@ def extract_mov_dot(datatable):
         if datatable["phase"+str(i)]['__visual_name'] != 'SingleDotRotatingBackAndForth':
             valid_phases[i] = 0             #get the indices of all phases 
     valid_indices = np.where(valid_phases == True)[0]  #get the indices of the phases with moving dots
+    
     valid_data = {}
-    for i in range(len(valid_indices)):     #loop over valid phases
-        valid_data[f"phase{valid_indices[i]}"] = datatable[f"phase{valid_indices[i]}"]   #add keys and the data behind to the new dictionary
+    for i in range(min(valid_indices)-1, max(valid_indices)+1):     #loop over valid phases
+        valid_data[f"phase{i}"] = datatable[f"phase{i}"]   #add keys and the data behind to the new dictionary
     return valid_data
 
 
