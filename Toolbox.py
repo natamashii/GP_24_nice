@@ -67,7 +67,7 @@ def extract_mov_dot(datatable):
     valid_indices = np.where(valid_phases == True)[0]  #get the indices of the phases with moving dots
     valid_data = {}
     for i in range(len(valid_indices)):     #loop over valid phases
-        valid_data[i] = {f"phase{valid_indices[i]}": datatable[f"phase{valid_indices[i]}"]}   #add keys and the data behind to the new dictionary
+        valid_data[f"phase{valid_indices[i]}"] = datatable[f"phase{valid_indices[i]}"]   #add keys and the data behind to the new dictionary
     return valid_data
 
 
