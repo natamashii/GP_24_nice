@@ -30,9 +30,15 @@ def load_hdf5(import_path: str, name: str):
     for g_idx in names_idx:
         group = names[g_idx]
         current_group = f[group]
+        # get current group's attribute names
+        cg_names = list(current_group.attrs.keys())
+        # get current group's attribute values
+        cg_values = list(current_group.attrs.values())
         data_dict[group] = {}
         for subgrp in current_group.keys():
             data_dict[group][subgrp] = f[group][subgrp][()]
+        for att in range(len(cg_names)):
+            data_dict[group][cg_names[att]] = cg_values[att]
     f.close()
     return data_dict
 
