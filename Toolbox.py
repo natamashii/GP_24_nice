@@ -76,6 +76,108 @@ def extract_mov_dot(datatable):
     return valid_data
 
 
+def extract_dot_ds(data_movdot, dot_size):
+    """
+    Extracting the phases containing moving dot depending on dot size
+
+    Parameters
+    ----------
+    data_movdot : dict
+        dictionary containing all stimulus phases with a moving dot and the 
+        breaks inbetween (should also work with the dictionary of the entire 
+                          stimulus - not tested)
+    dot_size : int
+        dot angular diameter - either 5 or 30 
+
+    Returns
+    -------
+    move_dot_ds : dict
+        dictionary containing all phases of a moving dot of one specific size.
+        - ds: dot_size
+
+    """
+    print("getting phases depending on your dot sizes")
+    # get phases of interest (remove all lines that are interesting)
+    valid_phases = []    
+    for curr_phase, i in zip(data_movdot.keys(), range(len(data_movdot))):           #loop over all phases
+        if data_movdot[curr_phase]['__visual_name'] == 'SingleDotRotatingBackAndForth':
+            if data_movdot[curr_phase]['dot_angular_diameter'] == dot_size:
+                valid_phases.append(curr_phase)             #get the indices of all phases 
+        else:
+            continue                            #skip phases without a moving dot
+    move_dot_ds = {}
+    for i in valid_phases:     #loop over valid phases
+        move_dot_ds[i] = data_movdot[i]   #add keys and the data behind to the new dictionary
+    return move_dot_ds
+
+
+def extract_dot_window(data_dot_ds, window):
+    """
+    extract phases of moving dots within one of the tested windows. To use after
+    extracting phases of one dot size.
+
+    Parameters
+    ----------
+    data_dot_ds : dict
+        Containing all phases with a moving dot of one size.
+    window : string
+        determining which window should be extracted. 
+        Possible windows: left, front, right, back
+
+    Returns
+    -------
+    data_window : dict
+        containing the phases with all their information that are presented in one
+        window.
+
+    """
+    if window == "left":
+        valid_phases = []    
+        for curr_phase, i in zip(data_dot_ds.keys(), range(len(data_dot_ds))):           #loop over all phases
+            if data_dot_ds[curr_phase]['__visual_name'] == 'SingleDotRotatingBackAndForth':
+                if data_dot_ds[curr_phase]['dot_start_angle'] == -180:
+                    valid_phases.append(curr_phase)             #get the indices of all phases 
+            else:
+                continue                            #skip phases without a moving dot
+        data_window = {}
+        for i in valid_phases:     #loop over valid phases
+            data_window[i] = data_dot_ds[i]   #add keys and the data behind to the new dictionary
+    elif window == "front":
+        valid_phases = []    
+        for curr_phase, i in zip(data_dot_ds.keys(), range(len(data_dot_ds))):           #loop over all phases
+            if data_dot_ds[curr_phase]['__visual_name'] == 'SingleDotRotatingBackAndForth':
+                if data_dot_ds[curr_phase]['dot_start_angle'] == -90:
+                    valid_phases.append(curr_phase)             #get the indices of all phases 
+            else:
+                continue                            #skip phases without a moving dot
+        data_window = {}
+        for i in valid_phases:     #loop over valid phases
+            data_window[i] = data_dot_ds[i]   #add keys and the data behind to the new dictionary
+    elif window == "right":
+        valid_phases = []    
+        for curr_phase, i in zip(data_dot_ds.keys(), range(len(data_dot_ds))):           #loop over all phases
+            if data_dot_ds[curr_phase]['__visual_name'] == 'SingleDotRotatingBackAndForth':
+                if data_dot_ds[curr_phase]['dot_start_angle'] == 0:
+                    valid_phases.append(curr_phase)             #get the indices of all phases 
+            else:
+                continue                            #skip phases without a moving dot
+        data_window = {}
+        for i in valid_phases:     #loop over valid phases
+            data_window[i] = data_dot_ds[i]   #add keys and the data behind to the new dictionary
+    elif window == "back":
+        valid_phases = []    
+        for curr_phase, i in zip(data_dot_ds.keys(), range(len(data_dot_ds))):           #loop over all phases
+            if data_dot_ds[curr_phase]['__visual_name'] == 'SingleDotRotatingBackAndForth':
+                if data_dot_ds[curr_phase]['dot_start_angle'] == 90:
+                    valid_phases.append(curr_phase)             #get the indices of all phases 
+            else:
+                continue                            #skip phases without a moving dot
+        data_window = {}
+        for i in valid_phases:     #loop over valid phases
+            data_window[i] = data_dot_ds[i]   #add keys and the data behind to the new dictionary
+    return data_window
+
+
 # function to smooth data via sliding window
 def avg_smooth(data, window):
     low_lim = int(window / 2)
