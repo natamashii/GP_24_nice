@@ -118,7 +118,7 @@ def calc_dff_wind(F, window):
         for t in range(low_lim, upp_lim):
             # get median within window
             F0[t] = np.nanmedian(trace[t - low_lim:t + low_lim])
-        dff_wind[cell, t - low_lim] = (trace[t] - F0[t]) / F0[t]
+            dff_wind[cell, t - low_lim] = (trace[t] - F0[t]) / F0[t]
         __printProgressBar(progress_counter, l, prefix="progress:", suffix="complete", length=50)
         progress_counter = progress_counter + 1
     return dff_wind
@@ -132,7 +132,7 @@ def calc_dff(F):
     __printProgressBar(0, l, prefix="progress:", suffix="complete", length=50)
     progress_counter = 1
     for cell, trace in enumerate(F):
-        F0 = np.nmedian(trace)
+        F0 = np.median(trace)
         dff[cell, :] = [(x - F0) / F0 for x in trace]
         __printProgressBar(progress_counter, l, prefix="progress:", suffix="complete", length=50)
         progress_counter = progress_counter + 1
