@@ -7,8 +7,6 @@ import pandas as pd
 import math
 from colorama import Fore
 import h5py
-
-
 # import seaborn as sns
 # import skimage
 # import statsmodels
@@ -45,6 +43,35 @@ def load_hdf5(import_path: str, name: str):
     f.close()
     return data_dict
 
+# function to align time traces bc communication between PCs isn't flawless...
+def adjust_frames(io, F):
+    # io["di_frame_sync"] is box function within behaviour recording (right PC)
+    # switch to 1 = left PC started a frame scan
+    # switch to 0 = left PC ended the frame scan
+    box_trace = np.diff(io["di_frame_sync"][:].flatten())   # indices of switches
+    frame_times = io["di_frame_sync_time"][:-1][box_trace].flatten()    # time points of switches
+    calcium_frames = np.shape(F)[1]     # amount of frames of calcium trace
+    # control for errors by comparing sizes of calcium trace frames & detected switches
+    if not len(frame_times) == calcium_frames:
+        # last started frame scan of left PC will never be finished, therefore must be discarded
+        if len(frame_times) - calcium_frames == 1:
+            frame_times = frame_times[:-1]
+        # case of miscommunication of PCs: less detected switches by right PC than performed by left PC
+        elif calcium_frames >= len(frame_times):
+            # inform abt miscommunication
+            print("WARNING: MISCOMMUNICATION BETWEEN PC OCCURRED! LESS SCAN SWITCHES DETECTED BY RIGHT PC THAN PERFORMED BY LEFT PC!")
+            # "interpolate" frame_times
+            frame_times = np.linspace(frame_times[0], frame_times[-1], calcium_frames + 1)
+            # exclude last detected switch cuz never completed
+            frame_times = frame_times[:-1]
+        # case of total chaotic miscommunication
+        else:
+            print("ERROR!! TOTAL MISCOMMUNICATION BETWEEN PC OCCURRED! CHECK TRACES INDIVIDUALLY!")
+            fig, axs = plt.subplots()
+            axs.plot(io["di_frame_sync_time"][:], io["di_frame_sync"][:], color="green", label="Box Trace, io['di_frame_sync_time']")
+            axs.scatter(frame_times, np.zeros(np.shape(frame_times)), color="magenta", label="Detected Switches by Right PC")
+            plt.show(block=False)
+    return frame_times
 
 def extract_mov_dot(datatable):
     """
@@ -76,6 +103,106 @@ def extract_mov_dot(datatable):
     return valid_data
 
 
+def extract_dot_ds(data_movdot, dot_size):
+    """
+    Extracting the phases containing moving dot depending on dot size
+
+    Parameters
+    ----------
+    data_movdot : dict
+        dictionary containing all stimulus phases with a moving dot and the
+        breaks inbetween (should also work with the dictionary of the entire
+                          stimulus - not tested)
+    dot_size : int
+        dot angular diameter - either 5 or 30
+
+    Returns
+    -------
+    move_dot_ds : dict
+        dictionary containing all phases of a moving dot of one specific size.
+        - ds: dot_size
+
+    """
+    print("getting phases depending on your dot sizes")
+    # get phases of interest (remove all lines that are interesting)
+    valid_phases = []
+    for curr_phase, i in zip(data_movdot.keys(), range(len(data_movdot))):           #loop over all phases
+        if data_movdot[curr_phase]['__visual_name'] == 'SingleDotRotatingBackAndForth':
+            if data_movdot[curr_phase]['dot_angular_diameter'] == dot_size:
+                valid_phases.append(curr_phase)             #get the indices of all phases
+        else:
+            continue                            #skip phases without a moving dot
+    move_dot_ds = {}
+    for i in valid_phases:     #loop over valid phases
+        move_dot_ds[i] = data_movdot[i]   #add keys and the data behind to the new dictionary
+    return move_dot_ds
+
+def extract_dot_window(data_dot_ds, window):
+    """
+    extract phases of moving dots within one of the tested windows. To use after
+    extracting phases of one dot size.
+
+    Parameters
+    ----------
+    data_dot_ds : dict
+        Containing all phases with a moving dot of one size.
+    window : string
+        determining which window should be extracted.
+        Possible windows: left, front, right, back
+
+    Returns
+    -------
+    data_window : dict
+        containing the phases with all their information that are presented in one
+        window.
+
+    """
+    if window == "left":
+        valid_phases = []
+        for curr_phase, i in zip(data_dot_ds.keys(), range(len(data_dot_ds))):           #loop over all phases
+            if data_dot_ds[curr_phase]['__visual_name'] == 'SingleDotRotatingBackAndForth':
+                if data_dot_ds[curr_phase]['dot_start_angle'] == -180:
+                    valid_phases.append(curr_phase)             #get the indices of all phases
+            else:
+                continue                            #skip phases without a moving dot
+        data_window = {}
+        for i in valid_phases:     #loop over valid phases
+            data_window[i] = data_dot_ds[i]   #add keys and the data behind to the new dictionary
+    elif window == "front":
+        valid_phases = []
+        for curr_phase, i in zip(data_dot_ds.keys(), range(len(data_dot_ds))):           #loop over all phases
+            if data_dot_ds[curr_phase]['__visual_name'] == 'SingleDotRotatingBackAndForth':
+                if data_dot_ds[curr_phase]['dot_start_angle'] == -90:
+                    valid_phases.append(curr_phase)             #get the indices of all phases
+            else:
+                continue                            #skip phases without a moving dot
+        data_window = {}
+        for i in valid_phases:     #loop over valid phases
+            data_window[i] = data_dot_ds[i]   #add keys and the data behind to the new dictionary
+    elif window == "right":
+        valid_phases = []
+        for curr_phase, i in zip(data_dot_ds.keys(), range(len(data_dot_ds))):           #loop over all phases
+            if data_dot_ds[curr_phase]['__visual_name'] == 'SingleDotRotatingBackAndForth':
+                if data_dot_ds[curr_phase]['dot_start_angle'] == 0:
+                    valid_phases.append(curr_phase)             #get the indices of all phases
+            else:
+                continue                            #skip phases without a moving dot
+        data_window = {}
+        for i in valid_phases:     #loop over valid phases
+            data_window[i] = data_dot_ds[i]   #add keys and the data behind to the new dictionary
+    elif window == "back":
+        valid_phases = []
+        for curr_phase, i in zip(data_dot_ds.keys(), range(len(data_dot_ds))):           #loop over all phases
+            if data_dot_ds[curr_phase]['__visual_name'] == 'SingleDotRotatingBackAndForth':
+                if data_dot_ds[curr_phase]['dot_start_angle'] == 90:
+                    valid_phases.append(curr_phase)             #get the indices of all phases
+            else:
+                continue                            #skip phases without a moving dot
+        data_window = {}
+        for i in valid_phases:     #loop over valid phases
+            data_window[i] = data_dot_ds[i]   #add keys and the data behind to the new dictionary
+    return data_window
+
 # function to smooth data via sliding window
 def avg_smooth(data, window):
     low_lim = int(window / 2)
@@ -88,7 +215,7 @@ def avg_smooth(data, window):
     nan_data[:, low_lim:upp_lim] = data
     print("smooth data")
     l = data.shape[0]
-    __printProgressBar(0, l, prefix="progress:", suffic="complete", length=50)
+    __printProgressBar(0, l, prefix="progress:", suffix="complete", length=50)
     progress_counter = 1
     for cell, trace in enumerate(nan_data):
         for t in range(low_lim, upp_lim):
@@ -97,9 +224,12 @@ def avg_smooth(data, window):
         progress_counter = progress_counter + 1
     return smooth_data
 
-
 # function to calculate dff via sliding window approach
-def calc_dff_wind(F, window):
+def calc_dff_wind(F, window, frame_rate=2.18):
+    # control that window size is optimal
+    window = int(window * 60 * frame_rate)  # unit to frames
+    if not window % 2:
+        window += 1
     upp_lim = int(F.shape[1] + window / 2)
     low_lim = int(window / 2)
     # pre allocation
@@ -152,6 +282,13 @@ def calc_dff_zscore(F):
         progress_counter = progress_counter + 1
     return dff
 
+# function of regressor curve (for convolution), Credits to Carina
+def CIRF(regressor, n_ca_frames, tau=1.6):
+    time = np.arange(0, n_ca_frames)
+    exp = np.exp(-time / tau)
+    reg_conv = np.convolve(regressor, exp)
+    reg_conv = reg_conv[:n_ca_frames]
+    return reg_conv
 
 # function to make plots more aesthetic
 def plot_beautiful(ax, xmin=None, xmax=None, ymin=None, ymax=None, step=None,
