@@ -7,9 +7,11 @@ import pandas as pd
 import math
 from colorama import Fore
 import h5py
-#import seaborn as sns
-#import skimage
-#import statsmodels
+
+
+# import seaborn as sns
+# import skimage
+# import statsmodels
 
 # function for saving data as HDF5 (stolen from David)
 def save_hdf5(list_of_data_arrays, list_of_labels, new_directory: str, export_path: str, permission='a'):
@@ -19,6 +21,7 @@ def save_hdf5(list_of_data_arrays, list_of_labels, new_directory: str, export_pa
         gr = f.create_group(new_directory)
         for i in range(len(list_of_data_arrays)):
             gr[list_of_labels[i]] = list_of_data_arrays[i]
+
 
 # function to load an HDF5 file (stolen from David)
 def load_hdf5(import_path: str, name: str):
@@ -42,6 +45,7 @@ def load_hdf5(import_path: str, name: str):
     f.close()
     return data_dict
 
+
 def extract_mov_dot(datatable):
     """
     extracts all phases and their data containing a visual name 'SingleDotRotatingBackAndForth'
@@ -60,16 +64,109 @@ def extract_mov_dot(datatable):
     """
     print("extracting moving dot phases")
     # get phases of interest (remove all lines that are interesting)
-    valid_phases = np.ones(len(datatable))    
-    for i in range(len(datatable)):           #loop over all phases
-        if datatable["phase"+str(i)]['__visual_name'] != 'SingleDotRotatingBackAndForth':
-            valid_phases[i] = 0             #get the indices of all phases 
-    valid_indices = np.where(valid_phases == True)[0]  #get the indices of the phases with moving dots
-    
+    valid_phases = np.ones(len(datatable))
+    for i in range(len(datatable)):  # loop over all phases
+        if datatable["phase" + str(i)]['__visual_name'] != 'SingleDotRotatingBackAndForth':
+            valid_phases[i] = 0  # get the indices of all phases
+    valid_indices = np.where(valid_phases == True)[0]  # get the indices of the phases with moving dots
+
     valid_data = {}
-    for i in range(min(valid_indices)-1, max(valid_indices)+1):     #loop over valid phases
-        valid_data[f"phase{i}"] = datatable[f"phase{i}"]   #add keys and the data behind to the new dictionary
+    for i in range(min(valid_indices) - 1, max(valid_indices) + 1):  # loop over valid phases
+        valid_data[f"phase{i}"] = datatable[f"phase{i}"]  # add keys and the data behind to the new dictionary
     return valid_data
+
+
+# function to smooth data via sliding window
+def avg_smooth(data, window):
+    low_lim = int(window / 2)
+    upp_lim = int(data.shape[1] + window / 2)
+    # pre allocation
+    smooth_data = np.zeros(np.shape(data))
+    # add nan values before and after data trace
+    nan_data = np.empty((data.shape[0], int(data.shape[1] + window)))
+    nan_data[:] = np.nan
+    nan_data[:, low_lim:upp_lim] = data
+    print("smooth data")
+    l = data.shape[0]
+    __printProgressBar(0, l, prefix="progress:", suffic="complete", length=50)
+    progress_counter = 1
+    for cell, trace in enumerate(nan_data):
+        for t in range(low_lim, upp_lim):
+            smooth_data[cell, t - low_lim] = np.nanmean(trace[t - low_lim:t + low_lim])
+        __printProgressBar(progress_counter, l, prefix="progress:", suffix="complete", length=50)
+        progress_counter = progress_counter + 1
+    return smooth_data
+
+
+# function to calculate dff via sliding window approach
+def calc_dff_wind(F, window):
+    upp_lim = int(F.shape[1] + window / 2)
+    low_lim = int(window / 2)
+    # pre allocation
+    dff_wind = np.zeros(np.shape(F))
+    nan_F = np.empty((F.shape[0], int(F.shape[1] + window)))
+    nan_F[:] = np.nan
+    nan_F[:, low_lim:upp_lim] = F
+    print("calculate dff via sliding window approach")
+    l = dff_wind.shape[0]
+    __printProgressBar(0, l, prefix="progress:", suffix="complete", length=50)
+    progress_counter = 1
+    # iterate over each cell
+    for cell, trace in enumerate(nan_F):
+        # window approach for F0
+        F0 = np.zeros((np.shape(nan_F)[1]))
+        for t in range(low_lim, upp_lim):
+            # get median within window
+            F0[t] = np.nanmedian(trace[t - low_lim:t + low_lim])
+        dff_wind[cell, t - low_lim] = (trace[t] - F0[t]) / F0[t]
+        __printProgressBar(progress_counter, l, prefix="progress:", suffix="complete", length=50)
+        progress_counter = progress_counter + 1
+    return dff_wind
+
+
+# function to calculate dff via global median
+def calc_dff(F):
+    print("Calculate dff")
+    dff = np.zeros(np.shape(F))
+    l = dff.shape[0]
+    __printProgressBar(0, l, prefix="progress:", suffix="complete", length=50)
+    progress_counter = 1
+    for cell, trace in enumerate(F):
+        F0 = np.nmedian(trace)
+        dff[cell, :] = [(x - F0) / F0 for x in trace]
+        __printProgressBar(progress_counter, l, prefix="progress:", suffix="complete", length=50)
+        progress_counter = progress_counter + 1
+    return dff
+
+
+# function to calculate dff via z-score
+def calc_dff_zscore(F):
+    print("Calculate dff with z-score")
+    dff = np.zeros(np.shape(F))
+    l = dff.shape[0]
+    __printProgressBar(0, l, prefix="progress:", suffix="complete", length=50)
+    progress_counter = 1
+    for cell, trace in enumerate(F):
+        dff[cell, :] = ss.stats.score(trace, axis=0)
+        __printProgressBar(progress_counter, l, prefix="progress:", suffix="complete", length=50)
+        progress_counter = progress_counter + 1
+    return dff
+
+
+# function to make plots more aesthetic
+def plot_beautiful(ax, xmin=None, xmax=None, ymin=None, ymax=None, step=None,
+                   xlabel="", ylabel="", title="", legend=True):
+    ax.spines[["top", "right"]].set_visible(False)  # toggle off top & right ax spines
+    if not xmin == xmax:
+        ax.set_xticks(np.linspace(xmin, xmax, step))  # if values given, adjust x ticks
+    if not ymin == ymax:
+        ax.set_yticks(np.linspace(ymin, ymax, step))  # if values given, adjust x ticks
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    if legend:
+        # move legend to right & outside of plot
+        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., markerscale=5)
 
 
 # Function for Progressbar, Credits to David
@@ -94,19 +191,3 @@ def __printProgressBar(iteration, total, prefix='', suffix='', decimals=1, lengt
     # Print New Line on Complete
     if iteration == total:
         print(Fore.RESET)
-
-# function to make plots more aesthetic
-def plot_beautiful(ax, xmin=None, xmax=None, ymin=None, ymax=None, step=None,
-                   xlabel="", ylabel="", title="", legend=True):
-    ax.spines[["top", "right"]].set_visible(False)  # toggle off top & right ax spines
-    if not xmin == xmax:
-        ax.set_xticks(np.linspace(xmin, xmax, step))      # if values given, adjust x ticks
-    if not ymin == ymax:
-        ax.set_yticks(np.linspace(ymin, ymax, step))      # if values given, adjust x ticks
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
-    if legend:
-        # move legend to right & outside of plot
-        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., markerscale=5)
-        
