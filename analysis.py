@@ -2,6 +2,9 @@ __author__ = "Natalie_Fischer"
 # importing
 import numpy as np
 import matplotlib as mpl
+
+from Preprocessing_test import regressor_thisCon
+
 mpl.use("TkAgg")
 import matplotlib.pyplot as plt
 import scipy as ss
@@ -18,6 +21,8 @@ phase_data = {}
 frame_rate = 2.18  # in Hz
 des_wind = 5    # window size for sliding window median (DFF), in min
 tau = 1.6
+ds = [5, 30]    # dot sizes used in recordings
+dot_winds = ["left", "right", "back", "front"]  # locations of moving dot stimulus
 
 # define path: rn only one recording, later then more general
 # in jupyter notebook: default working directory is location of this file (can be seen with "print(os.getcwd())"  )
@@ -84,9 +89,39 @@ dff_interest = dff[:, np.min(dff_indices):np.max(dff_indices)]
 
 # %% Regressor Part
 print("to be continued")
+# split dff trace in attributes (written by samu)
+
+move_dot_5 = tt.extract_dot_ds(data_movdot=valid_data, dot_size=ds[0])
+move_dot_30 = tt.extract_dot_ds(data_movdot=valid_data, dot_size=ds[1])
+
+dot_left_5 = tt.extract_dot_window(data_dot_ds=move_dot_5, window=dot_winds[0])
+dot_right_5 = tt.extract_dot_window(data_dot_ds=move_dot_5, window=dot_winds[1])
+dot_back_5 = tt.extract_dot_window(data_dot_ds=move_dot_5, window=dot_winds[2])
+dot_front_5 = tt.extract_dot_window(data_dot_ds=move_dot_5, window=dot_winds[3])
+
+dot_left_30 = tt.extract_dot_window(data_dot_ds=move_dot_30, window=dot_winds[0])
+dot_right_30 = tt.extract_dot_window(data_dot_ds=move_dot_30, window=dot_winds[1])
+dot_back_30 = tt.extract_dot_window(data_dot_ds=move_dot_30, window=dot_winds[2])
+dot_front_30 = tt.extract_dot_window(data_dot_ds=move_dot_30, window=dot_winds[3])
 
 # %%
+# TODO: ask carina to explain her code once more cuz im too dumb for this shit again...
+# get amount of all phases now
+amount_phases = len(move_dot_5) + len(move_dot_30)
 
+regressor_win_buffer = [1, 10]
+all_regressors = np.zeros([amount_phases, np.shape(F)[1]])
+all_regressors_conv = np.zeros(np.shape(all_regressors))
+
+for idx in phase_data["index"]:
+    current_phase = phase_data["visualname"][idx]
+    if current_phase == "SingleDotRotatingBackAndForth":
+        start = phase_data["dff_start_idx"][idx]
+        end = phase_data["dff_end_idx"][idx]
+        all_regressors[idx, start:end] = 1
+        all_regressors_conv[idx, start:end] = tt.CIRF(regressor=all_regressors[idx, start:end], n_ca_frames=len(frame_times), tau=tau)
+    elif current_phase == "SphereUniformBackground":
+        # breaks needed for later z score i guess and/or correlation
 
 
 # extract cell positions
