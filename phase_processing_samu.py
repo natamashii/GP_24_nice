@@ -68,7 +68,7 @@ data_windows_list_small= [data_left_window_small, data_front_window_small, data_
 
 
 data_elevations_list_big = []
-tp_elevations_big = []
+tp_windows_big = []
 for j in range(len(elevations_list_big)):
     data_elevations_window = []
     tp_elevations_window_big = []
@@ -88,11 +88,11 @@ for j in range(len(elevations_list_big)):
         data_elevations_window.append(data_elevation)
         tp_elevations_window_big.append(tp_elevation_big)
     data_elevations_list_big.append(data_elevations_window)
-    tp_elevations_big.append(tp_elevations_window_big)
+    tp_windows_big.append(tp_elevations_window_big)
     
     
 data_elevations_list_small = []
-tp_elevations_small = []
+tp_windows_small = []
 for k in range(len(elevations_list_small)):
     data_elevations_window = []
     tp_elevations_window_small = []
@@ -112,6 +112,6 @@ for k in range(len(elevations_list_small)):
         data_elevations_window.append(data_elevation)
         tp_elevations_window_small.append(tp_elevation_small)
     data_elevations_list_small.append(data_elevations_window)
-    tp_elevations_small.append(tp_elevations_window_small)
+    tp_windows_small.append(tp_elevations_window_small)
     
     
