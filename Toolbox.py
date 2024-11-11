@@ -203,6 +203,10 @@ def extract_dot_window(data_dot_ds, window):
             data_window[i] = data_dot_ds[i]   #add keys and the data behind to the new dictionary
     return data_window
 
+# function to convert time point into calcium frame indices
+def convert_time_frame(frame_times, time_point_variable):
+    return min(enumerate(frame_times), key=lambda x: abs(x[1] - time_point_variable))[0]
+
 # function to smooth data via sliding window
 def avg_smooth(data, window):
     low_lim = int(window / 2)
@@ -286,7 +290,7 @@ def calc_dff_zscore(F):
 def CIRF(regressor, n_ca_frames, tau=1.6):
     time = np.arange(0, n_ca_frames)
     exp = np.exp(-time / tau)
-    reg_conv = np.convolve(regressor, exp)
+    reg_conv = np.convolve(regressor, v=exp)
     reg_conv = reg_conv[:n_ca_frames]
     return reg_conv
 
