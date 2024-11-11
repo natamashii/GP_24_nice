@@ -8,7 +8,7 @@ import Toolbox as tb
 # define path: rn only one recording, later then more general
 # in jupyter notebook: default working directory is location of this file (can be seen with "print(os.getcwd())"  )
 # to access other working directories: os.chdir("")
-data_path = "D:/Uni/Master/3_Semester/GP_Ari/GP24_fish1_rec1_05112024/"
+data_path = "C:/Users/samue/Master/3_Semester/GP_Ari/GP24_fish1_rec1_05112024/"
 
 # get vxpy stuff
 #
@@ -82,8 +82,10 @@ for j in range(len(elevations_list_big)):
         for i in valid_phases:     #loop over valid phases
             data_elevation[i] = data_windows_list_big[j][i]   #add keys and the data behind to the new dictionary
             st_elevation = data_windows_list_big[j][i]["__start_time"]
+            tp_switch_big = data_windows_list_big[j][i]["__start_time"] + data_windows_list_big[j][i]["t_switch"]
             et_elevation = st_elevation + data_windows_list_big[j][i]["__target_duration"]
             tp_elevation_big.append(st_elevation)
+            tp_elevation_big.append(tp_switch_big[0])
             tp_elevation_big.append(et_elevation)
         data_elevations_window.append(data_elevation)
         tp_elevations_window_big.append(tp_elevation_big)
@@ -107,11 +109,14 @@ for k in range(len(elevations_list_small)):
             data_elevation[i] = data_windows_list_small[k][i]   #add keys and the data behind to the new dictionary
             st_elevation = data_windows_list_small[k][i]["__start_time"]
             et_elevation = st_elevation + data_windows_list_small[k][i]["__target_duration"]
+            tp_switch = data_windows_list_small[k][i]["__start_time"] + data_windows_list_small[k][i]["t_switch"]
             tp_elevation_small.append(st_elevation)
+            tp_elevation_small.append(tp_switch[0])
             tp_elevation_small.append(et_elevation)
         data_elevations_window.append(data_elevation)
         tp_elevations_window_small.append(tp_elevation_small)
     data_elevations_list_small.append(data_elevations_window)
     tp_windows_small.append(tp_elevations_window_small)
     
+
     
