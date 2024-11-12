@@ -257,7 +257,6 @@ print("Done")
 
 # %% Correlation: Find Correlation of cells to Moving Dot
 corr_array = np.zeros((np.shape(dff)[0], len(all_regressors_conv)))
-break_regressor = np.zeros((np.shape(dff)[1], 1))
 
 # iterate over all cells
 for cell, trace in enumerate(dff):
@@ -269,14 +268,9 @@ for cell, trace in enumerate(dff):
         ultimate_end = np.max(all_regressors_phase_etp[cond])
         corr_array[cell, cond] = np.corrcoef(trace[ultimate_start:ultimate_end+1], reg_trace[ultimate_start:ultimate_end+1])[0, 1]
 
-# repeat but for breaks after phase, get correlation for last x break frames (counting from end to forth)
-# regressor should be zero so just take zero line as regressor?
-
-
-
-
 # find a good cell
-indices = np.where(corr_array > .4)
+# keep threshold higher and lower for autocorrelation
+indices = np.where(corr_array > .3)
 good_cells, gc_ind = np.unique(indices[0], return_index=True)
 gc_phase = indices[1][gc_ind]
 
@@ -301,4 +295,5 @@ print("Done")
 
 # %% Autocorrelation: Yeet cells that do not react to Moving Dot
 
+# look at final product with pixel plot
 
