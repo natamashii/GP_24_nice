@@ -294,6 +294,10 @@ def CIRF(regressor, n_ca_frames, tau=1.6):
     reg_conv = reg_conv[:n_ca_frames]
     return reg_conv
 
+# function to convert time seconds to calcium trace indices
+def convert_time_frame(frame_times, time_point_variable):
+    return min(enumerate(frame_times), key=lambda x: abs(x[1] - time_point_variable))[0]
+
 # function to make plots more aesthetic
 def plot_beautiful(ax, xmin=None, xmax=None, ymin=None, ymax=None, step=None,
                    xlabel="", ylabel="", title="", legend=True):
