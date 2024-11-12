@@ -8,6 +8,7 @@ import scipy as ss
 import h5py
 import matplotlib.colors as colors
 import os
+import pandas as pd
 import Toolbox as tt
 
 # pre allocation
@@ -26,6 +27,7 @@ des_wind = 5    # window size for sliding window median (DFF), in min
 tau = 1.6
 ds = [5, 30]    # dot sizes used in recordings
 dot_winds = ["left", "right", "back", "front"]  # locations of moving dot stimulus
+
 # offset_angle = elevation
 left_elevations_big = np.arange(15, -16, -15)
 front_elevation_big = np.arange(45, 14, -15)
@@ -41,10 +43,10 @@ back_elevation_small = np.arange(-15, -46, -5)
 # in jupyter notebook: default working directory is location of this file (can be seen with "print(os.getcwd())"  )
 # to access other working directories: os.chdir("")
 # data_path for at home
-#data_path = "E:\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
+data_path = "E:\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
 
 # data_path for at lab
-data_path = "Z:\\shared\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
+#data_path = "Z:\\shared\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
 
 # data_path for jupyter
 
@@ -64,19 +66,15 @@ stat = np.load(data_path + "suite2p\\plane0\\stat.npy", allow_pickle=True)
 print("Done")
 
 # %% Calculate DFF
+# smooth traces with average in sliding window
 smooth_f = tt.avg_smooth(data=F, window=3)
 
-# plot multiple cells
+# calculate DFF with median in sliding window as F0
 dff = tt.calc_dff_wind(F=smooth_f, window=des_wind, frame_rate=frame_rate)
-fig, axs = plt.subplots(15, 1, sharex=True, sharey=True, constrained_layout=True)
-for c in range(15):
-    axs[c].plot(dff[c, :], color="magenta")
-fig.suptitle(str(des_wind))
-plt.show(block=False)
 
 print("Done")
 
-# %% Samu Stuff
+# %%
 # align frames between both PCs
 frame_times = tt.adjust_frames(io=io, F=F)
 
@@ -248,14 +246,10 @@ for idx_ds in range(len(data_elevations_list)):
             regressor_trace_conv = tt.CIRF(regressor=regressor_trace, n_ca_frames=len(frame_times), tau=tau)
             all_regressors_conv.append(regressor_trace_conv)
 
-plt.figure()
-plt.plot(all_regressors_conv[0])
-plt.title("WHOOOOOOOOOOOOOOOHHHHHHHHHHHHHHH")
-plt.show()
-
 print("Done")
 
 # %% Correlation: Find Correlation of cells to Moving Dot
+# pre allocation
 corr_array = np.zeros((np.shape(dff)[0], len(all_regressors_conv)))
 
 # iterate over all cells
@@ -268,32 +262,81 @@ for cell, trace in enumerate(dff):
         ultimate_end = np.max(all_regressors_phase_etp[cond])
         corr_array[cell, cond] = np.corrcoef(trace[ultimate_start:ultimate_end+1], reg_trace[ultimate_start:ultimate_end+1])[0, 1]
 
-# find a good cell
-# keep threshold higher and lower for autocorrelation
-indices = np.where(corr_array > .3)
-good_cells, gc_ind = np.unique(indices[0], return_index=True)
-gc_phase = indices[1][gc_ind]
+# select only good cells
+gc_ind = np.where(corr_array > .3)
+good_cells, good_cells_idx = np.unique(gc_ind[0], return_index=True)
+gc_phase = gc_ind[1][good_cells_idx]
 
-# get max regressor for best cells
-very_best_phases = []
-very_best_phase_names = []
-for gc in range(np.shape(good_cells)[0]):
-    very_best_phases.append(np.argmax(corr_array[good_cells[gc]]))
-    very_best_phase_names.append(all_regressors_phase[np.argmax(corr_array[good_cells[gc]])])
-
-# plot this shit
-fig, axs = plt.subplots(np.shape(good_cells)[0], 1, figsize=(15, 250), sharex=True, constrained_layout=True)
-for gc in range(np.shape(good_cells)[0]):
-    axs[gc].plot(all_regressors_conv[gc_phase[gc]][4400:-1], color="green", label="The very best regressor!")
-    axs[gc].plot(dff[good_cells[gc]][4400:-1], color="magenta", label="The very best cells!")
-axs[-1].legend()
-plt.show()
-
-fig.savefig("Z:\\shared\\GP_24\\AAA.svg", format="svg")
+#get dff-traces containing only good cells
+dff_good = dff[good_cells, :]
 
 print("Done")
 
 # %% Autocorrelation: Yeet cells that do not react to Moving Dot
+# kick out badly autocorrelated cells
+indices_all = [indices_windows_big, indices_windows_small]
 
+cell_size = np.shape(dff)[0]
+ds_size = len(indices_all)
+window_size = len(indices_windows_small)
+
+
+
+# Define avg_corr_coefs_rec with the calculated dimensions
+avg_corr_coefs_rec = np.zeros((cell_size, window_size * 3 + window_size * 7))
+
+
+for cell in range(cell_size):
+    for ds in range(ds_size):
+        for window in range(window_size):
+            elevation_size = len(indices_windows_small[window])
+            for elevation in range(elevation_size):
+                #get subsets for the repetitions
+                subset1 = dff[cell, indices_windows_small[window][elevation][0]-1 : indices_windows_small[window][elevation][2]+10]
+                subset2 = dff[cell, indices_windows_small[window][elevation][3]-1 : indices_windows_small[window][elevation][5]+10]
+                subset3 = dff[cell, indices_windows_small[window][elevation][6]-1 : indices_windows_small[window][elevation][8]+10]
+                # Determine the maximum length of the arrays
+                max_length = max(len(subset1), len(subset2), len(subset3))
+                # Pad each array with NaNs to match the maximum length
+                if max_length - len(subset1) != 0:
+                    subset1 = np.append(subset1, [np.nan] * (max_length - len(subset1)))
+                if max_length - len(subset2) != 0:
+                    subset2 = np.append(subset2, [np.nan] * (max_length - len(subset2)))
+                if max_length - len(subset3) != 0:
+                    subset3 = np.append(subset3, [np.nan] * (max_length - len(subset3)))
+                #create dataframe of the subsets
+                df = pd.DataFrame({'Array1': subset1,
+                                  'Array2': subset2,
+                                  'Array3': subset3})
+                #calculate the pearson correlation scores
+                corr_coef = df.corr()
+                #get the needed correlation scores
+                corr_coefs_phase = (corr_coef.iloc[1, 0], corr_coef.iloc[2, 0], corr_coef.iloc[2, 1])
+                #transform them into an array to use np.nanmean
+                array_corr_coefs = np.array(corr_coefs_phase, dtype = np.float64)
+                #average correlation scores of repetitions
+                avg_corr_coef = np.nanmean(corr_coefs_phase)
+                if ds == 0:
+                    # Handling for indices_windows_big
+                    index = window * 3 + elevation
+                elif ds == 1:
+                    # Handling for indices_windows_small
+                    index = window_size * 3 + window * 7 + elevation
+                avg_corr_coefs_rec[cell, index] = avg_corr_coef
+# %% check if it worked
+
+indices = np.where(avg_corr_coefs_rec > 0.4)
+good_cells = np.unique(indices[0])
+len(good_cells)
+
+# %%
+np.random.seed(1)
+rdm_good_cells = np.random.choice(good_cells, size = 100, replace = False)
+fig, axs = plt.subplots(nrows=100, ncols=1, figsize=(15, 150), constrained_layout = True)
+for i in range(len(rdm_good_cells)):
+    axs[i].plot(dff_good[i])
 # look at final product with pixel plot
+
+
+# %%
 
