@@ -40,9 +40,13 @@ back_elevation_small = np.arange(-15, -46, -5)
 # define path: rn only one recording, later then more general
 # in jupyter notebook: default working directory is location of this file (can be seen with "print(os.getcwd())"  )
 # to access other working directories: os.chdir("")
+# data_path for at home
 #data_path = "E:\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
 
+# data_path for at lab
 data_path = "Z:\\shared\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
+
+# data_path for jupyter
 
 # get vxpy stuff
 display = tt.load_hdf5(data_path + "Display.hdf5", name="phase")
@@ -52,6 +56,12 @@ io = h5py.File(data_path + "Io.hdf5")
 F = np.load(data_path + "suite2p\\plane0\\F.npy")  # intensity trace for each detected cell
 ops = np.load(data_path + "suite2p\\plane0\\ops.npy", allow_pickle=True).item()
 stat = np.load(data_path + "suite2p\\plane0\\stat.npy", allow_pickle=True)
+# data for when run in jupyter lal
+# F = np.load(data_path + "suite2p/F.npy")  # intensity trace for each detected cell
+# ops = np.load(data_path + "suite2p/ops.npy", allow_pickle=True).item()
+# stat = np.load(data_path + "suite2p/stat.npy", allow_pickle=True)
+
+print("Done")
 
 # %% Calculate DFF
 smooth_f = tt.avg_smooth(data=F, window=3)
@@ -63,6 +73,8 @@ for c in range(15):
     axs[c].plot(dff[c, :], color="magenta")
 fig.suptitle(str(des_wind))
 plt.show(block=False)
+
+print("Done")
 
 # %% Samu Stuff
 # align frames between both PCs
@@ -199,12 +211,17 @@ data_elevations_list = [data_elevations_list_big, data_elevations_list_small]
 tp_windows = [tp_windows_big, tp_windows_small]
 indices_windows = [indices_windows_big, indices_windows_small]
 
+print("Done")
+
 # %% Regressor stuff
 # first do regressor over all dot phases, then later maybe also on each direction within a dot phase
 regressor_win_buffer = [1, 10]
 all_regressors = []
 all_regressors_conv = []
 all_regressors_phase = []
+all_regressors_phase_stp = []
+all_regressors_phase_etp = []
+
 
 # BUILD the regressor
 # iterate over dot sizes
@@ -225,6 +242,8 @@ for idx_ds in range(len(data_elevations_list)):
                 regressor_trace[start_ind[idx_rep]:end_ind[idx_rep]] = 1
             all_regressors.append(regressor_trace)
             all_regressors_phase.append(phase_names)
+            all_regressors_phase_stp.append(start_ind)
+            all_regressors_phase_etp.append(end_ind)
             # Convolution: Build regressor at relevant time points of current stimulus version (these are nonzero)
             regressor_trace_conv = tt.CIRF(regressor=regressor_trace, n_ca_frames=len(frame_times), tau=tau)
             all_regressors_conv.append(regressor_trace_conv)
@@ -234,18 +253,51 @@ plt.plot(all_regressors_conv[0])
 plt.title("WHOOOOOOOOOOOOOOOHHHHHHHHHHHHHHH")
 plt.show()
 
+print("Done")
+
 # %% Correlation: Find Correlation of cells to Moving Dot
 corr_array = np.zeros((np.shape(dff)[0], len(all_regressors_conv)))
+break_regressor = np.zeros((np.shape(dff)[1], 1))
 
 # iterate over all cells
 for cell, trace in enumerate(dff):
     # iterate over all conditions
     for cond, reg_trace in enumerate(all_regressors_conv):
-        corr_array[cell, cond] = np.corrcoef(trace, reg_trace)[0, 1]
+        current_phases = all_regressors_phase[cond]
+        # find corresponding indices in dff
+        ultimate_start = np.min(all_regressors_phase_stp[cond])
+        ultimate_end = np.max(all_regressors_phase_etp[cond])
+        corr_array[cell, cond] = np.corrcoef(trace[ultimate_start:ultimate_end+1], reg_trace[ultimate_start:ultimate_end+1])[0, 1]
 
-for cell in range(np.shape(dff)[0]):
-    plt.figure()
-    pl
+# repeat but for breaks after phase, get correlation for last x break frames (counting from end to forth)
+# regressor should be zero so just take zero line as regressor?
+
+
+
+
+# find a good cell
+indices = np.where(corr_array > .4)
+good_cells, gc_ind = np.unique(indices[0], return_index=True)
+gc_phase = indices[1][gc_ind]
+
+# get max regressor for best cells
+very_best_phases = []
+very_best_phase_names = []
+for gc in range(np.shape(good_cells)[0]):
+    very_best_phases.append(np.argmax(corr_array[good_cells[gc]]))
+    very_best_phase_names.append(all_regressors_phase[np.argmax(corr_array[good_cells[gc]])])
+
+# plot this shit
+fig, axs = plt.subplots(np.shape(good_cells)[0], 1, figsize=(15, 250), sharex=True, constrained_layout=True)
+for gc in range(np.shape(good_cells)[0]):
+    axs[gc].plot(all_regressors_conv[gc_phase[gc]][4400:-1], color="green", label="The very best regressor!")
+    axs[gc].plot(dff[good_cells[gc]][4400:-1], color="magenta", label="The very best cells!")
+axs[-1].legend()
+plt.show()
+
+fig.savefig("Z:\\shared\\GP_24\\AAA.svg", format="svg")
+
+print("Done")
 
 # %% Autocorrelation: Yeet cells that do not react to Moving Dot
 
