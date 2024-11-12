@@ -2,10 +2,6 @@ __author__ = "Natalie_Fischer"
 # importing
 import numpy as np
 import matplotlib as mpl
-from numpy.core.numeric import indices
-
-from Toolbox import convert_time_frame
-
 mpl.use("TkAgg")
 import matplotlib.pyplot as plt
 import scipy as ss
@@ -44,9 +40,9 @@ back_elevation_small = np.arange(-15, -46, -5)
 # define path: rn only one recording, later then more general
 # in jupyter notebook: default working directory is location of this file (can be seen with "print(os.getcwd())"  )
 # to access other working directories: os.chdir("")
-data_path = "E:\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
+#data_path = "E:\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
 
-#data_path = "Z:\\shared\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
+data_path = "Z:\\shared\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
 
 # get vxpy stuff
 display = tt.load_hdf5(data_path + "Display.hdf5", name="phase")
@@ -66,7 +62,7 @@ fig, axs = plt.subplots(15, 1, sharex=True, sharey=True, constrained_layout=True
 for c in range(15):
     axs[c].plot(dff[c, :], color="magenta")
 fig.suptitle(str(des_wind))
-plt.show()
+plt.show(block=False)
 
 # %% Samu Stuff
 # align frames between both PCs
@@ -199,7 +195,7 @@ for k in range(len(elevations_list_small)):
     tp_windows_small.append(tp_elevations_window_small)
     indices_windows_small.append(indices_elevations_window_small)
 
-data_elevations_list = [data_elevations_list_big, data_windows_list_small]
+data_elevations_list = [data_elevations_list_big, data_elevations_list_small]
 tp_windows = [tp_windows_big, tp_windows_small]
 indices_windows = [indices_windows_big, indices_windows_small]
 
@@ -208,49 +204,49 @@ indices_windows = [indices_windows_big, indices_windows_small]
 regressor_win_buffer = [1, 10]
 all_regressors = []
 all_regressors_conv = []
+all_regressors_phase = []
 
 # BUILD the regressor
-# iterate over all important phases
-for idx, phase in enumerate(valid_data.keys()):
-    current_phase = valid_data[phase]
-    # if current phase had dot an dwas not a break
-    if current_phase["__visual_name"] == "SingleDotRotatingBackAndForth":
-        # i somehow need the dff index... it is in samus monster code
-        # before i rewrite samus stuff, i convert indices myself quickly
-        start = convert_time_frame(frame_times=frame_times, time_point_variable=current_phase["__start_time"])
-        end = convert_time_frame(frame_times=frame_times,
-                                 time_point_variable=(current_phase["__start_time"] + current_phase["__target_duration"]))
-        regressor_trace = np.zeros((np.shape(F)[1]))
-        regressor_trace[start:end] = 1
-        # also keep raw version of regressor (Carina did that)
-        all_regressors.append(regressor_trace)
-        # convolution: build regressor at relevant time points (these are nonzero)
-        regressor_trace_conv = tt.CIRF(regressor=regressor_trace, n_ca_frames=len(frame_times), tau=tau)
-        all_regressors_conv.append(regressor_trace_conv)
-    #elif current_phase == "SphereUniformBackground":
-        # breaks needed for later z score i guess and/or correlation
+# iterate over dot sizes
+for idx_ds in range(len(data_elevations_list)):
+    # iterate over stimulus window
+    for idx_wind in range(len(data_elevations_list[idx_ds])):
+        # iterate over elevation level
+        for idx_el in range(len(data_elevations_list[idx_ds][idx_wind])):
+            current_cond = data_elevations_list[idx_ds][idx_wind][idx_el]
+            phase_names = list(current_cond.keys())
+            start_ind = indices_windows[idx_ds][idx_wind][idx_el][0:-1:3]
+            switch_ind = indices_windows[idx_ds][idx_wind][idx_el][1:-1:3]
+            end_ind = indices_windows[idx_ds][idx_wind][idx_el][2:-1:3]
+            end_ind.append(indices_windows[idx_ds][idx_wind][idx_el][-1])
+            # build the expressor
+            regressor_trace = np.zeros((np.shape(F)[1]))
+            for idx_rep in range(len(data_elevations_list[idx_ds][idx_wind][idx_el])):
+                regressor_trace[start_ind[idx_rep]:end_ind[idx_rep]] = 1
+            all_regressors.append(regressor_trace)
+            all_regressors_phase.append(phase_names)
+            # Convolution: Build regressor at relevant time points of current stimulus version (these are nonzero)
+            regressor_trace_conv = tt.CIRF(regressor=regressor_trace, n_ca_frames=len(frame_times), tau=tau)
+            all_regressors_conv.append(regressor_trace_conv)
 
-# %% Regressor for moving dot direction
-# Iterate over Dot size
-for ds in range(len(indices_windows)):
-    # iterate over the four different windows
-    for wi in range(len(indices_windows[ds])):
-        # iterate over all elevation levels shown
-        for el in range(len(indices_windows[ds][wi])):
-            # iterate over repetitions of usages of current pattern
-                # HOW THE FUCK DO I KNOW HOW MANY REPETITIONS THERE ARE
-
-# %% Autocorrelation: Yeet cells that do not react to Moving Dot
+plt.figure()
+plt.plot(all_regressors_conv[0])
+plt.title("WHOOOOOOOOOOOOOOOHHHHHHHHHHHHHHH")
+plt.show()
 
 # %% Correlation: Find Correlation of cells to Moving Dot
-# %%
-# autocorrelation to yeet cells that fire not consistently enough
+corr_array = np.zeros((np.shape(dff)[0], len(all_regressors_conv)))
 
-auto_corr = []
 # iterate over all cells
-for cell in range(len(np.shape(dff)[0])):
-    current_cell = dff[cell, np.min(dff_indices):np.max(dff_indices)]
-    # get autocorrelation in moving dot phases
+for cell, trace in enumerate(dff):
+    # iterate over all conditions
+    for cond, reg_trace in enumerate(all_regressors_conv):
+        corr_array[cell, cond] = np.corrcoef(trace, reg_trace)[0, 1]
 
+for cell in range(np.shape(dff)[0]):
+    plt.figure()
+    pl
+
+# %% Autocorrelation: Yeet cells that do not react to Moving Dot
 
 
