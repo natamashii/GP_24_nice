@@ -102,6 +102,20 @@ def extract_mov_dot(datatable):
         valid_data[f"phase{i}"] = datatable[f"phase{i}"]  # add keys and the data behind to the new dictionary
     return valid_data
 
+def extract_pauses_md(data_movdot):
+    print("extracting pause-phases from movedot data")
+    # get phases of interest (remove all lines that are interesting)
+    valid_phases = []
+    for curr_phase, i in zip(data_movdot.keys(), range(len(data_movdot))):           #loop over all phases
+        if data_movdot[curr_phase]['__visual_name'] == 'SphereUniformBackground':
+            valid_phases.append(curr_phase)     #get the indices of all phases
+        else:
+            continue                            #skip phases without a moving dot
+    valid_data = {}
+    for i in valid_phases:     #loop over valid phases
+        valid_data[i] = data_movdot[i]   #add keys and the data behind to the new dictionary
+    return valid_data
+
 
 def extract_dot_ds(data_movdot, dot_size):
     """

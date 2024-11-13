@@ -7,13 +7,14 @@ import pandas as pd
 
 from Toolbox import convert_time_frame
 
+#%%
 # hardcoded stuff
 frame_rate = 2.18  # in Hz
 des_wind = 5    # window size for sliding window median (DFF), in min
 tau = 1.6
 ds = [5, 30]    # dot sizes used in recordings
 dot_winds = ["left", "right", "back", "front"]  # locations of moving dot stimulus
-
+tail_length = 5
 # define path: rn only one recording, later then more general
 # in jupyter notebook: default working directory is location of this file (can be seen with "print(os.getcwd())"  )
 # to access other working directories: os.chdir("")
@@ -174,7 +175,6 @@ all_regressors_phase = []
 all_regressors_phase_stp = []
 all_regressors_phase_etp = []
 
-
 # BUILD the regressor
 # iterate over dot sizes
 for idx_ds in range(len(data_elevations_list)):
@@ -291,12 +291,67 @@ for cell in range(cell_size):
 # %% check if it worked
 
 indices = np.where(avg_corr_coefs_rec > 0.4)
-good_cells = np.unique(indices[0])
-len(good_cells)
+best_cells = np.unique(indices[0])
+dff_best_cells = dff[best_cells, :]
 
 # %%
+"""
 np.random.seed(1)
-rdm_good_cells = np.random.choice(good_cells, size = 100, replace = False)
-fig, axs = plt.subplots(nrows=100, ncols=1, figsize=(15, 150), constrained_layout = True)
+rdm_good_cells = np.random.choice(good_cells, size = 10, replace = False)
+fig, axs = plt.subplots(nrows=10, ncols=1, figsize=(15, 50), constrained_layout = True)
 for i in range(len(rdm_good_cells)):
     axs[i].plot(dff_good[i])
+  """  
+#%% 
+#z-score:
+#get üause phases and frames
+pause_phases = tb.extract_pauses_md(data_movdot)
+start_frames = np.zeros(len(pause_phases), dtype = np.int64)
+end_frames = np.zeros(len(pause_phases), dtype = np.int64)
+for curr_phase, i in zip(pause_phases.keys(), range(len(pause_phases))): 
+    start_time = pause_phases[curr_phase]["__start_time"] 
+    end_time = start_time + pause_phases[curr_phase]["__target_duration"]
+    start_frames[i] = convert_time_frame(frame_times, start_time)
+    end_frames[i] = convert_time_frame(frame_times, end_time)
+
+#get the length of one row
+z_score_bl = []
+for i in range(len(start_frames)):
+    z_score_bl.extend(dff[0][start_frames[i]+tail_length:end_frames[i]])
+    
+#preallocate   
+z_score_bl_cells = np.zeros((np.shape(dff)[0], len(z_score_bl)))
+z_bl_cells_mean = np.zeros((np.shape(dff)[0], 1))
+z_bl_cells_std = np.zeros((np.shape(dff)[0], 1))
+#get the mean and the standard-deviation of the baseline
+for c in range(len(z_score_bl_cells)):
+    #get the baseline
+    z_score_bl = []
+    for i in range(len(start_frames)):
+        z_score_bl.extend(dff[c][start_frames[i]+tail_length:end_frames[i]])
+    z_score_bl_cells[c] = z_score_bl
+    z_bl_cells_mean[c] = np.mean(z_score_bl)
+    z_bl_cells_std[c] = np.mean(z_score_bl)
+
+#loop over all best cells and the dff values to calculate their z-score
+z_best_cells = np.zeros((np.shape(dff_best_cells)[0], np.shape(dff_best_cells)[1]), dtype = np.float64)
+z_norm_bc = np.zeros((np.shape(dff_best_cells)[0], np.shape(dff_best_cells)[1]), dtype = np.float64)
+for c in range(np.shape(z_best_cells)[0]):
+    for frame in range(np.shape(z_best_cells)[1]):
+        z_best_cells[c, frame] = (dff_best_cells[c, frame]-z_bl_cells_mean[c])/z_bl_cells_std[c]
+    z_norm_bc[c] = z_best_cells[c]/np.max(z_best_cells[c])
+
+# %% normalisation of z_score - nur zum test
+max_z = np.max(z_best_cells)
+max_ind = np.where(z_best_cells == max_z)
+print(max_ind)
+#%%  
+# control plot of z-scores - nur zum test
+
+rdm_z_scores = np.random.choice(range(np.shape(z_best_cells)[0]), size = 10, replace = False)
+fig, axs = plt.subplots(nrows=10, ncols=1, figsize=(15, 50), constrained_layout = True)
+for i in range(len(rdm_z_scores)):
+    axs[i].plot(z_best_cells[i])    
+#%% - nur zum test
+fig5 = plt.figure()
+plt.plot(z_best_cells[59])
