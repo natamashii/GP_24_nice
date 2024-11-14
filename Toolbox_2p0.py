@@ -370,6 +370,49 @@ def compare(corr_cells, autocorr_cells):
 def convert_time_frame(frame_times, time_point_variable):
     return min(enumerate(frame_times), key=lambda x: abs(x[1] - time_point_variable))[0]
 
+def get_mean_dff_trace(chosen_cells, indices,):
+    print("Compute average dFF curve over all 3 repetitions")
+    # pre allocation
+    best_cells_avg = []
+    # iterate over cells
+    indices_mean_dff = np.full((len(indices), len(indices[0]), len(indices[0,0]), 2), np.nan)
+    counter = 0
+    for cell in range(np.shape(chosen_cells)[0]):
+        # iterate over dot sizes
+        avg_dff_cell = []
+        for d in range(len(indices)):
+            # iterate over windows
+            for window in range(len(indices[d])):
+                # identify amount of elevation levels used for this stimulus
+                for elevation in range(len(indices[d, window])):             
+                    if not np.isnan(indices[d, window, elevation]).any():
+                        counter += 1 
+                        # identify phases of repetitions
+                        rep1 = chosen_cells[cell, int(indices[d, window, elevation, 0, 0]):
+                                         int(indices[d, window, elevation, 0, 2])]
+                        rep2 = chosen_cells[cell, int(indices[d, window, elevation, 1, 0]):
+                                         int(indices[d, window, elevation, 1, 2])]
+                        rep3 = chosen_cells[cell, int(indices[d, window, elevation, 2, 0]):
+                                         int(indices[d, window, elevation, 2, 2])]
+                        rep_matrix = np.full((3, max([len(rep1), len(rep2), len(rep3)])), np.nan)
+                        rep_matrix[0, 0 : len(rep1)] = rep1
+                        rep_matrix[1, 0 : len(rep2)] = rep2
+                        rep_matrix[2, 0 : len(rep3)] = rep3
+                        avg_dff = np.nanmean(rep_matrix, axis = 0)
+                        #get new start-indices
+                        indices_mean_dff[d, window, elevation, 0] = len(avg_dff_cell)
+                        #extend average dff values
+                        avg_dff_cell.extend(avg_dff)                 
+                        #get new end-indices
+                        indices_mean_dff[d, window, elevation, 1] = len(avg_dff_cell)                 
+        best_cells_avg.append(avg_dff_cell)
+    counter /= np.shape(chosen_cells)[0]
+    mean_dff_best_cells = np.zeros((len(best_cells_avg), len(best_cells_avg[0])))
+    for cell in range(np.shape(mean_dff_best_cells)[0]):
+        mean_dff_best_cells[cell, :] = best_cells_avg[cell]
+    return mean_dff_best_cells, indices_mean_dff
+
+
 # function to make plots more aesthetic
 def plot_beautiful(ax, xmin=None, xmax=None, ymin=None, ymax=None, step=None,
                    xlabel="", ylabel="", title="", legend=True):

@@ -18,6 +18,20 @@ def find_activity_peak(dff_trace):
     weight = np.max(dff_trace)
     return weight
 
+def get_AUCs(mean_dff_best_cells, new_inds, num_stim):
+    # calculate AUC:
+    AUCs_all_cells = np.zeros((np.shape(mean_dff_best_cells)[0], num_stim))
+    for cell in range(np.shape(AUCs_all_cells)[0]):
+        AUCs_cell = []
+        for d in range(len(new_inds)):
+            for window in range(len(new_inds[d])):
+                for elevation in range(len(new_inds[d, window])):
+                    if not np.isnan(new_inds[d, window, elevation]).any():
+                        AUC = np.trapz(mean_dff_best_cells[cell, int(new_inds[d, window, elevation, 0]):
+                                                           int(new_inds[d, window, elevation, 1])])
+                        AUCs_cell.append(AUC)
+        AUCs_all_cells[cell, : ] = AUCs_cell
+    return AUCs_all_cells
 
 def create_stimulus_mask(stim_trace, elevation_size, azimuth_size):
     """
@@ -75,8 +89,9 @@ def generate_cell_rf(dff_traces, stim_traces, elevation_size, azimuth_size):
         mask = create_stimulus_mask(stim_trace, elevation_size, azimuth_size)
         rf_matrix = calculate_rf(weight, mask)
         rf_matrix_total += rf_matrix  # Superimpose RFs
-
     return rf_matrix_total
+
+def 
 
 
 def plot_rf(rf_matrix):

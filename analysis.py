@@ -2,14 +2,17 @@ __author__ = "Natalie_Fischer"
 # importing
 import numpy as np
 import matplotlib as mpl
-mpl.use("TkAgg")
+
 import matplotlib.pyplot as plt
 import scipy as ss
 import h5py
 import matplotlib.colors as colors
 import os
 import Toolbox_2p0 as tt
+import analyse_moving_dot_gp24 as tb
 
+
+#%%
 # pre allocation
 cell_pos = []
 
@@ -30,7 +33,7 @@ conds_elevations = [["1, 2, 3"], ["1", "2", "3", "4", "5", "6", "7"]]
 # in jupyter notebook: default working directory is location of this file (can be seen with "print(os.getcwd())"  )
 # to access other working directories: os.chdir("")
 # data_path for at home
-data_path = "E:\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
+data_path = "C:/Users/samue/Master/3_Semester/GP_Ari/GP24_fish1_rec1_05112024/"
 
 # data_path for at lab
 # data_path = "Z:\\shared\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
@@ -153,7 +156,7 @@ for cond in range(len(all_regressors)):
             get_cell = chosen_cells[cell_idx, t_min:t_max]
             sorted_cells.append(get_cell)
 sorted_cells = np.array(sorted_cells)
-
+"""
 # now split time axis and sort after this
 # this should set an order of numbers for conditions, after this the cells must be sorted to...
 # order: big dot left, right, front, back ; small dot left, right, front, back
@@ -172,6 +175,7 @@ for ds_idx, ds in enumerate(conds_dotsizes):
             sorted_all[f"{ds}_{wind}_{el}"] = list(sort_counter, phase_name, start_ind, end_ind)
 
 # COMBINE IT WITH UPPER NESTED FOR LOOP
+"""
 
 # %% Z-Score
 tail_length = 5
@@ -213,6 +217,7 @@ t_min = np.nanmin([np.nanmin(indices), np.nanmin(break_start)]).astype("int64")
 t_max = np.nanmax([np.nanmax(indices), np.nanmax(break_end)]).astype("int64")
 
 z_scores_cells = z_score[:, t_min:t_max]
+
 # %%
 fig, axs = plt.subplots()
 pixelplot = axs.imshow(z_scores_cells, cmap="PiYG")
@@ -223,3 +228,40 @@ axs.set_title("Cells of Rec 1 Fish 1 Day 1, Only DFF, attempted sort")
 fig.colorbar(pixelplot)
 
 plt.show(block=False)
+
+#%%
+split_counter = 0
+time_conds = np.full((len(all_regressors), 2, 3), np.nan, dtype="int64")
+# iterate over dot sizes
+for ds in range(np.shape(indices)[0]):
+    # iterate over windows
+    for wind in range(np.shape(indices)[1]):
+        # iterate over elevations
+        for el in range(np.shape(indices)[2]):
+            if not np.isnan(indices[ds, wind, el, :, :]).any():
+                for rep in range(np.shape(indices)[3]):
+                    # find start & end
+                    cond_start = indices[ds, wind, el, rep, 0].astype("int64")
+                    time_conds[split_counter, 0, rep] = cond_start
+                    cond_end = indices[ds, wind, el, rep, 2].astype("int64")
+                    time_conds[split_counter, 1, rep] = cond_end
+
+#%% get average dffover repetitions for each condition and cell
+mean_dff_bcs, new_inds = tt.get_mean_dff_trace(chosen_cells, indices)
+
+#%%get the AUCs
+num_stim = len(all_regressors)
+
+AUCs_cells = tb.get_AUCs(mean_dff_bcs, new_inds, num_stim)
+
+
+
+
+
+
+
+
+
+
+
+
