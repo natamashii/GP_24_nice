@@ -8,36 +8,23 @@ import scipy as ss
 import h5py
 import matplotlib.colors as colors
 import os
-import pandas as pd
-import Toolbox as tt
+import Toolbox_2p0 as tt
 
 # pre allocation
 cell_pos = []
-phase_data = {}
-data_elevations_list_big = []
-tp_windows_big = []
-indices_windows_big = []
-data_elevations_list_small = []
-tp_windows_small = []
-indices_windows_small = []
 
 # hardcoded stuff
 frame_rate = 2.18  # in Hz
 des_wind = 5    # window size for sliding window median (DFF), in min
 tau = 1.6
 ds = [5, 30]    # dot sizes used in recordings
-dot_winds = ["left", "right", "back", "front"]  # locations of moving dot stimulus
-
-# offset_angle = elevation
-left_elevations_big = np.arange(15, -16, -15)
-front_elevation_big = np.arange(45, 14, -15)
-right_elevation_big = np.arange(15, -16, -15)
-back_elevation_big = np.arange(-15, -46, -15)
-
-left_elevations_small = np.arange(15, -16, -5)
-front_elevation_small = np.arange(45, 14, -5)
-right_elevation_small = np.arange(15, -16, -5)
-back_elevation_small = np.arange(-15, -46, -5)
+all_dot_sizes = np.array([[30, 5], [-15, -5]], dtype="int32")
+all_windows = np.array([[-180, -90, 0, 90],
+                        [15, 45, 15, -15], [-15, 15, -15, -45]], dtype="int32")
+win_buffer = [-1, 10]
+conds_dotsizes = ["big", "small"]
+conds_windows = ["left" "front", "right", "back"]
+conds_elevations = [["1, 2, 3"], ["1", "2", "3", "4", "5", "6", "7"]]
 
 # define path: rn only one recording, later then more general
 # in jupyter notebook: default working directory is location of this file (can be seen with "print(os.getcwd())"  )
@@ -46,7 +33,7 @@ back_elevation_small = np.arange(-15, -46, -5)
 data_path = "E:\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
 
 # data_path for at lab
-#data_path = "Z:\\shared\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
+# data_path = "Z:\\shared\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
 
 # data_path for jupyter
 
@@ -63,8 +50,6 @@ stat = np.load(data_path + "suite2p\\plane0\\stat.npy", allow_pickle=True)
 # ops = np.load(data_path + "suite2p/ops.npy", allow_pickle=True).item()
 # stat = np.load(data_path + "suite2p/stat.npy", allow_pickle=True)
 
-print("Done")
-
 # %% Calculate DFF
 # smooth traces with average in sliding window
 smooth_f = tt.avg_smooth(data=F, window=3)
@@ -72,271 +57,169 @@ smooth_f = tt.avg_smooth(data=F, window=3)
 # calculate DFF with median in sliding window as F0
 dff = tt.calc_dff_wind(F=smooth_f, window=des_wind, frame_rate=frame_rate)
 
-print("Done")
-
-# %%
+# %% Split Data into stimulus conditions
 # align frames between both PCs
 frame_times = tt.adjust_frames(io=io, F=F)
 
 # find phases of Moving Dot & corresponding break phases
 valid_data = tt.extract_mov_dot(display)
 
-# split dff trace in attributes (written by samu)
+time_points, phase_names, indices, break_phases = (
+    tt.extract_version2(valid_data=valid_data, all_dot_sizes=all_dot_sizes,
+                        all_windows=all_windows, frame_times=frame_times))
 
-move_dot_5 = tt.extract_dot_ds(data_movdot=valid_data, dot_size=ds[0])
-move_dot_30 = tt.extract_dot_ds(data_movdot=valid_data, dot_size=ds[1])
+# dimension 0: dot size: 0 = 30 ; 1 = 5
+# dimension 1: dot window: left, front, right, back
+# dimension 2: dot elevation level
+# dimension 3: number of repetition
+# dimension 4: start, switch, end
 
-dot_left_5 = tt.extract_dot_window(data_dot_ds=move_dot_5, window=dot_winds[0])
-dot_right_5 = tt.extract_dot_window(data_dot_ds=move_dot_5, window=dot_winds[1])
-dot_back_5 = tt.extract_dot_window(data_dot_ds=move_dot_5, window=dot_winds[2])
-dot_front_5 = tt.extract_dot_window(data_dot_ds=move_dot_5, window=dot_winds[3])
+# %% Build Regressor
 
-dot_left_30 = tt.extract_dot_window(data_dot_ds=move_dot_30, window=dot_winds[0])
-dot_right_30 = tt.extract_dot_window(data_dot_ds=move_dot_30, window=dot_winds[1])
-dot_back_30 = tt.extract_dot_window(data_dot_ds=move_dot_30, window=dot_winds[2])
-dot_front_30 = tt.extract_dot_window(data_dot_ds=move_dot_30, window=dot_winds[3])
+all_regressors, all_regressors_conv, all_regressors_phase_stp, all_regressors_phase_etp =\
+    tt.build_regressor(indices=indices, dff=dff, frame_times=frame_times, tau=tau)
 
-elevations_list_big = [left_elevations_big, front_elevation_big, right_elevation_big,
-                       back_elevation_big]
-elevations_list_small = [left_elevations_small, front_elevation_small,
-                         right_elevation_small, back_elevation_small]
-data_windows_list_big = [dot_left_30, dot_front_30, dot_right_30,
-                         dot_back_30]
-data_windows_list_small = [dot_left_5, dot_front_5, dot_right_5,
-                           dot_back_5]
-
-# split into stuff: 30 dot
-# iterate over windows of dot presentation
-for j in range(len(elevations_list_big)):
-    # pre allocation
-    data_elevations_window = []
-    tp_elevations_window_big = []
-    indices_elevations_window_big = []
-    # iterate over elevation levels used in this stimulus protocol: absolute position of dot elevation-wise
-    for elevation in elevations_list_big[j]:
-        # pre allocation
-        valid_phases = []
-        # iterate over all phases for this dot size
-        for curr_phase, i in zip(data_windows_list_big[j].keys(),
-                                 range(len(data_windows_list_big[j]))):
-            # if current phase meets current absolute elevation position
-            if data_windows_list_big[j][curr_phase]['dot_offset_angle'] == elevation:
-                valid_phases.append(curr_phase)
-        # pre allocation
-        data_elevation = {}
-        tp_elevation_big = []
-        indices_elevation_big = []
-        # iterate over currently relevant phases
-        for i in valid_phases:
-            # add keys and the data behind to the new dictionary
-            data_elevation[i] = data_windows_list_big[j][i]
-            st_elevation = data_windows_list_big[j][i]["__start_time"]
-            tp_switch_big = data_windows_list_big[j][i]["__start_time"] + data_windows_list_big[j][i]["t_switch"]
-            et_elevation = st_elevation + data_windows_list_big[j][i]["__target_duration"]
-            # find corresponding start frame in calcium trace
-            start_index = min(enumerate(frame_times), key=lambda x: abs(x[1] - st_elevation))[0]
-            # find corresponding direction switch frame in calcium trace
-            switch_index = min(enumerate(frame_times), key=lambda x: abs(x[1] - tp_switch_big))[0]
-            # find corresponding end frame in calcium trace
-            end_index = min(enumerate(frame_times), key=lambda x: abs(x[1] - et_elevation))[0]
-
-            tp_elevation_big.append(st_elevation)
-            tp_elevation_big.append(tp_switch_big[0])
-            tp_elevation_big.append(et_elevation)
-
-            indices_elevation_big.append(start_index)
-            indices_elevation_big.append(switch_index)
-            indices_elevation_big.append(end_index)
-
-        data_elevations_window.append(data_elevation)
-        tp_elevations_window_big.append(tp_elevation_big)
-        indices_elevations_window_big.append(indices_elevation_big)
-    data_elevations_list_big.append(data_elevations_window)
-    tp_windows_big.append(tp_elevations_window_big)
-    indices_windows_big.append(indices_elevations_window_big)
-
-# split stuff: 5 dot
-# iterate over windows of dot presentation
-for k in range(len(elevations_list_small)):
-    # pre allocation
-    data_elevations_window = []
-    tp_elevations_window_small = []
-    indices_elevations_window_small = []
-    # iterate over elevation levels used in this stimulus protocol: absolute position of dot elevation-wise
-    for elevation in elevations_list_small[k]:
-        # pre allocation
-        valid_phases = []
-        # iterate over all phases for this dot size
-        for curr_phase, i in zip(data_windows_list_small[k].keys(),
-                                 range(len(data_windows_list_small[k]))):
-            # if current phase meets current absolute elevation position
-            if data_windows_list_small[k][curr_phase]['dot_offset_angle'] == elevation:
-                valid_phases.append(curr_phase)
-        # pre allocation
-        data_elevation = {}
-        tp_elevation_small = []
-        indices_elevation_small = []
-        # iterate over currently relevant phases
-        for i in valid_phases:
-            # add keys and the data behind to the new dictionary
-            data_elevation[i] = data_windows_list_small[k][i]
-            st_elevation = data_windows_list_small[k][i]["__start_time"]
-            et_elevation = st_elevation + data_windows_list_small[k][i]["__target_duration"]
-            tp_switch = data_windows_list_small[k][i]["__start_time"] + data_windows_list_small[k][i]["t_switch"]
-            # find corresponding start frame in calcium trace
-            start_index = min(enumerate(frame_times), key=lambda x: abs(x[1] - st_elevation))[0]
-            # find corresponding direction switch frame in calcium trace
-            switch_index = min(enumerate(frame_times), key=lambda x: abs(x[1] - tp_switch))[0]
-            # find corresponding end frame in calcium trace
-            end_index = min(enumerate(frame_times), key=lambda x: abs(x[1] - et_elevation))[0]
-
-            tp_elevation_small.append(st_elevation)
-            tp_elevation_small.append(tp_switch[0])
-            tp_elevation_small.append(et_elevation)
-
-            indices_elevation_small.append(start_index)
-            indices_elevation_small.append(switch_index)
-            indices_elevation_small.append(end_index)
-
-        data_elevations_window.append(data_elevation)
-        tp_elevations_window_small.append(tp_elevation_small)
-        indices_elevations_window_small.append(indices_elevation_small)
-    data_elevations_list_small.append(data_elevations_window)
-    tp_windows_small.append(tp_elevations_window_small)
-    indices_windows_small.append(indices_elevations_window_small)
-
-data_elevations_list = [data_elevations_list_big, data_elevations_list_small]
-tp_windows = [tp_windows_big, tp_windows_small]
-indices_windows = [indices_windows_big, indices_windows_small]
-
-print("Done")
-
-# %% Regressor stuff
-# first do regressor over all dot phases, then later maybe also on each direction within a dot phase
-regressor_win_buffer = [1, 10]
-all_regressors = []
-all_regressors_conv = []
-all_regressors_phase = []
-all_regressors_phase_stp = []
-all_regressors_phase_etp = []
-
-
-# BUILD the regressor
-# iterate over dot sizes
-for idx_ds in range(len(data_elevations_list)):
-    # iterate over stimulus window
-    for idx_wind in range(len(data_elevations_list[idx_ds])):
-        # iterate over elevation level
-        for idx_el in range(len(data_elevations_list[idx_ds][idx_wind])):
-            current_cond = data_elevations_list[idx_ds][idx_wind][idx_el]
-            phase_names = list(current_cond.keys())
-            start_ind = indices_windows[idx_ds][idx_wind][idx_el][0:-1:3]
-            switch_ind = indices_windows[idx_ds][idx_wind][idx_el][1:-1:3]
-            end_ind = indices_windows[idx_ds][idx_wind][idx_el][2:-1:3]
-            end_ind.append(indices_windows[idx_ds][idx_wind][idx_el][-1])
-            # build the expressor
-            regressor_trace = np.zeros((np.shape(F)[1]))
-            for idx_rep in range(len(data_elevations_list[idx_ds][idx_wind][idx_el])):
-                regressor_trace[start_ind[idx_rep]:end_ind[idx_rep]] = 1
-            all_regressors.append(regressor_trace)
-            all_regressors_phase.append(phase_names)
-            all_regressors_phase_stp.append(start_ind)
-            all_regressors_phase_etp.append(end_ind)
-            # Convolution: Build regressor at relevant time points of current stimulus version (these are nonzero)
-            regressor_trace_conv = tt.CIRF(regressor=regressor_trace, n_ca_frames=len(frame_times), tau=tau)
-            all_regressors_conv.append(regressor_trace_conv)
-
-print("Done")
-
-# %% Correlation: Find Correlation of cells to Moving Dot
+# %% Correlation: Find Correlation of cells to Moving Dot Phases
 # pre allocation
-corr_array = np.zeros((np.shape(dff)[0], len(all_regressors_conv)))
-
-# iterate over all cells
-for cell, trace in enumerate(dff):
-    # iterate over all conditions
-    for cond, reg_trace in enumerate(all_regressors_conv):
-        current_phases = all_regressors_phase[cond]
-        # find corresponding indices in dff
-        ultimate_start = np.min(all_regressors_phase_stp[cond])
-        ultimate_end = np.max(all_regressors_phase_etp[cond])
-        corr_array[cell, cond] = np.corrcoef(trace[ultimate_start:ultimate_end+1], reg_trace[ultimate_start:ultimate_end+1])[0, 1]
+corr_array = tt.corr(dff=dff, regressors=all_regressors_conv, regressor_phase_stp=all_regressors_phase_stp, regressor_phase_etp=all_regressors_phase_etp)
 
 # select only good cells
-gc_ind = np.where(corr_array > .3)
-good_cells, good_cells_idx = np.unique(gc_ind[0], return_index=True)
-gc_phase = gc_ind[1][good_cells_idx]
+good_cells, good_cells_idx = np.unique(np.where(corr_array > .3)[0], return_index=True)
 
-#get dff-traces containing only good cells
-dff_good = dff[good_cells, :]
+# %% Autocorrelation: Yeet Cells that fluctuate in their responses to stimulus repetitions
 
-print("Done")
+auto_corrs = tt.autocorr(dff=dff, indices=indices, win_buffer=win_buffer, regressors=all_regressors_conv)
 
-# %% Autocorrelation: Yeet cells that do not react to Moving Dot
-# kick out badly autocorrelated cells
-indices_all = [indices_windows_big, indices_windows_small]
+really_good_cells, really_good_cells_idx = np.unique(np.where(auto_corrs > .4)[0], return_index=True)
 
-cell_size = np.shape(dff)[0]
-ds_size = len(indices_all)
-window_size = len(indices_windows_small)
+# find intersection between correlation result and autocorrelation result
+best_cells = tt.compare(corr_cells=good_cells, autocorr_cells=really_good_cells)
 
 
+# %% sort cells
 
-# Define avg_corr_coefs_rec with the calculated dimensions
-avg_corr_coefs_rec = np.zeros((cell_size, window_size * 3 + window_size * 7))
+chosen_cells = dff[best_cells.astype("int64"), :]
+
+# Carina's suggestion: split time into stimulus condition, take average value over all repeated phases & sort this
+
+avg_values = np.zeros((np.shape(indices)[0]))
+split_cells = []
+split_counter = 0
+for_sorting = np.zeros((np.shape(chosen_cells)[0], 3, 40))
+
+# iterate over dot sizes
+for ds in range(np.shape(indices)[0]):
+    # iterate over windows
+    for wind in range(np.shape(indices)[1]):
+        # iterate over elevations
+        for el in range(np.shape(indices)[2]):
+            if not np.isnan(indices[ds, wind, el, :, :]).any():
+                # iterate over repetitions
+                for rep in range(np.shape(indices)[3]):
+                    cond_start = np.nanmin(indices[ds, wind, el, rep, 0]).astype("int64")
+                    cond_end = np.nanmax(indices[ds, wind, el, rep, 2]).astype("int64")
+                    split_cells.append(chosen_cells[:, cond_start:cond_end])
+                    # get average of cell's dff in this phase
+                    for cell, trace in enumerate(chosen_cells):
+                        avg = np.nanmean(trace[cond_start:cond_end])
+                        # average dff across repetition
+                        for_sorting[cell, rep, split_counter] = avg
+                split_counter += 1
+
+# peak of average dff over condition: 40 values per cell
+for_sorting_el = np.nanmax(for_sorting, axis=1)
+# arg peak of peak mean dff: indices of condition the cell correlates best to
+sorting = np.nanargmax(for_sorting_el, axis=1)
 
 
-for cell in range(cell_size):
-    for ds in range(ds_size):
-        for window in range(window_size):
-            elevation_size = len(indices_windows_small[window])
-            for elevation in range(elevation_size):
-                #get subsets for the repetitions
-                subset1 = dff[cell, indices_windows_small[window][elevation][0]-1 : indices_windows_small[window][elevation][2]+10]
-                subset2 = dff[cell, indices_windows_small[window][elevation][3]-1 : indices_windows_small[window][elevation][5]+10]
-                subset3 = dff[cell, indices_windows_small[window][elevation][6]-1 : indices_windows_small[window][elevation][8]+10]
-                # Determine the maximum length of the arrays
-                max_length = max(len(subset1), len(subset2), len(subset3))
-                # Pad each array with NaNs to match the maximum length
-                if max_length - len(subset1) != 0:
-                    subset1 = np.append(subset1, [np.nan] * (max_length - len(subset1)))
-                if max_length - len(subset2) != 0:
-                    subset2 = np.append(subset2, [np.nan] * (max_length - len(subset2)))
-                if max_length - len(subset3) != 0:
-                    subset3 = np.append(subset3, [np.nan] * (max_length - len(subset3)))
-                #create dataframe of the subsets
-                df = pd.DataFrame({'Array1': subset1,
-                                  'Array2': subset2,
-                                  'Array3': subset3})
-                #calculate the pearson correlation scores
-                corr_coef = df.corr()
-                #get the needed correlation scores
-                corr_coefs_phase = (corr_coef.iloc[1, 0], corr_coef.iloc[2, 0], corr_coef.iloc[2, 1])
-                #transform them into an array to use np.nanmean
-                array_corr_coefs = np.array(corr_coefs_phase, dtype = np.float64)
-                #average correlation scores of repetitions
-                avg_corr_coef = np.nanmean(corr_coefs_phase)
-                if ds == 0:
-                    # Handling for indices_windows_big
-                    index = window * 3 + elevation
-                elif ds == 1:
-                    # Handling for indices_windows_small
-                    index = window_size * 3 + window * 7 + elevation
-                avg_corr_coefs_rec[cell, index] = avg_corr_coef
-# %% check if it worked
+t_min = np.nanmin(indices).astype("int64")
+t_max = np.nanmax(indices).astype("int64")
 
-indices = np.where(avg_corr_coefs_rec > 0.4)
-good_cells = np.unique(indices[0])
-len(good_cells)
+sorted_cells = list([] * len(all_regressors))
+amount_cells = np.zeros((len(all_regressors)))
+idx_cells = list([] * len(all_regressors))
 
+# iterate over all possible conditions of the stimulus
+for cond in range(len(all_regressors)):
+    # find how many cells were sorted to this condition
+    amount_cells[cond] = np.shape(np.where(sorting == cond))[1]
+    # get indices in sorting of cells sorted to this condition
+    ind_cells = np.where(sorting == cond)[0].astype("int64")
+    idx_cells.append(ind_cells)
+    # only continue if there are cells sorted to this condition
+    if amount_cells[cond] > 0:
+        # iterate over relevant cells
+        for cell_idx in ind_cells:
+            get_cell = chosen_cells[cell_idx, t_min:t_max]
+            sorted_cells.append(get_cell)
+sorted_cells = np.array(sorted_cells)
+
+# now split time axis and sort after this
+# this should set an order of numbers for conditions, after this the cells must be sorted to...
+# order: big dot left, right, front, back ; small dot left, right, front, back
+# maybe put them in dictionary...
+sorted_all = {}
+sort_counter = 0
+# iterate over dot sizes
+for ds_idx, ds in enumerate(conds_dotsizes):
+    # iterate over windows
+    for wind_idx, wind in enumerate(conds_windows):
+        # iterate over elevation levels
+        for el_idx, el in enumerate(conds_elevations[ds_idx]):
+            phase_name = list(phase_names[ds_idx, wind_idx, el_idx, :])
+            start_ind = list(time_points[ds_idx, wind_idx, el_idx, :, 0])
+            end_ind = list(time_points[ds_idx, wind_idx, el_idx, :, 2])
+            sorted_all[f"{ds}_{wind}_{el}"] = list(sort_counter, phase_name, start_ind, end_ind)
+
+# COMBINE IT WITH UPPER NESTED FOR LOOP
+
+# %% Z-Score
+tail_length = 5
+
+# pre allocation
+mean_std = np.zeros((2, np.shape(dff)[0]))
+cell_breaks = []
+z_score = np.zeros(np.shape(chosen_cells))
+break_start = np.zeros((len(break_phases)))
+break_end = np.zeros((len(break_phases)))
+
+
+# iterate over all cells
+for cell, trace in enumerate(chosen_cells):
+    # get pauses of each cell
+    current_cell_break = []
+    # iterate over all break phases
+    for b_phase in range(len(break_phases)):
+        start_ind = break_phases[b_phase][2]
+        break_start[b_phase] = start_ind
+        end_ind = break_phases[b_phase][4]
+        break_end[b_phase] = end_ind
+        current_cell_break.extend(chosen_cells[cell, start_ind+tail_length:end_ind])
+    # save all break dff frames for current cell
+    cell_breaks.append(current_cell_break)
+    # get mean for this cell
+    cell_mean = np.mean(current_cell_break)
+    mean_std[0, cell] = cell_mean
+    # get std for this cell
+    cell_std = np.std(current_cell_break)
+    mean_std[1, cell] = cell_std
+
+    # get z score for this cell
+    for frame_idx, frame in enumerate(trace):
+        z_score[cell, frame_idx] = (frame - cell_mean) / cell_std
+
+# identify total begin and end of Moving Dot interval
+t_min = np.nanmin([np.nanmin(indices), np.nanmin(break_start)]).astype("int64")
+t_max = np.nanmax([np.nanmax(indices), np.nanmax(break_end)]).astype("int64")
+
+z_scores_cells = z_score[:, t_min:t_max]
 # %%
-np.random.seed(1)
-rdm_good_cells = np.random.choice(good_cells, size = 100, replace = False)
-fig, axs = plt.subplots(nrows=100, ncols=1, figsize=(15, 150), constrained_layout = True)
-for i in range(len(rdm_good_cells)):
-    axs[i].plot(dff_good[i])
-# look at final product with pixel plot
+fig, axs = plt.subplots()
+pixelplot = axs.imshow(z_scores_cells, cmap="PiYG")
+#axs.set_xticks(np.linspace(time_points[np.where(indices == np.nanmin(indices))], time_points[np.where(indices == np.nanmax(indices))], np.shape(chosen_cells)[1]).flatten())
+axs.set_xlabel("Time [s]")
+axs.set_ylabel("Cells")
+axs.set_title("Cells of Rec 1 Fish 1 Day 1, Only DFF, attempted sort")
+fig.colorbar(pixelplot)
 
-
-# %%
-
+plt.show(block=False)
