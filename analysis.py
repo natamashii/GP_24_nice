@@ -2,7 +2,6 @@ __author__ = "Natalie_Fischer"
 # importing
 import numpy as np
 import matplotlib as mpl
-mpl.use("TkAgg")
 import matplotlib.pyplot as plt
 import scipy as ss
 import h5py
@@ -11,6 +10,7 @@ import os
 import Toolbox_2p0 as tt
 import analyse_moving_dot_gp24 as tb
 
+#%%
 # pre allocation
 cell_pos = []
 
@@ -34,7 +34,7 @@ conds_elevations = [["1", "2", "3"], ["1", "2", "3", "4", "5", "6", "7"]]
 #data_path = "E:\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
 
 # data_path for at lab
-data_path = "Z:\\shared\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
+data_path = "C:/Users/Sarah/OneDrive/Dokumente/Master/3_semester/gp2_arrenberg/data/"
 
 # data_path for jupyter
 # data_path = "/home/jovyan/data/fish_1_05112024/"
@@ -44,9 +44,9 @@ display = tt.load_hdf5(data_path + "Display.hdf5", name="phase")
 io = h5py.File(data_path + "Io.hdf5")
 
 # get suite2p stuff
-F = np.load(data_path + "suite2p\\plane0\\F.npy")  # intensity trace for each detected cell
-ops = np.load(data_path + "suite2p\\plane0\\ops.npy", allow_pickle=True).item()
-stat = np.load(data_path + "suite2p\\plane0\\stat.npy", allow_pickle=True)
+F = np.load(data_path + "F.npy")  # intensity trace for each detected cell
+ops = np.load(data_path + "ops.npy", allow_pickle=True).item()
+stat = np.load(data_path + "stat.npy", allow_pickle=True)
 # data for when run in jupyter lal
 # F = np.load(data_path + "suite2p/F.npy")  # intensity trace for each detected cell
 # ops = np.load(data_path + "suite2p/ops.npy", allow_pickle=True).item()
@@ -151,4 +151,61 @@ mean_dff_bcs, new_inds = tt.get_mean_dff_trace(chosen_cells, indices)
 #%%get the AUCs
 num_stim = len(all_regressors)
 
-AUCs_cells = tb.get_AUCs(mean_dff_bcs, new_inds, num_stim)
+AUCs_all_cells = tb.get_AUCs(mean_dff_bcs, new_inds, num_stim)
+
+
+#%% get the stimulus trace
+conds_ds = [30, 5]
+conds_winds = [-180, -90, 0, 90]
+conds_elevs = [[45, 15], [15, -15], [-15, -45], [15, -15]]
+
+
+stims = np.full((2, 4, 7, 3), np.nan)
+stims_list = []
+for ds in range(np.shape(indices)[0]):
+    #stims[ds] = conds_ds[ds]
+    # iterate over windows
+    for wind in range(np.shape(indices)[1]):
+        #stims[ds, wind] = conds_winds[wind]
+        # iterate over elevations
+        for el in range(np.shape(indices)[2]):
+            # only continue if repetition exists
+            if not np.isnan(indices[ds, wind, el]).any():
+                if ds == 0:
+                    offsets = np.arange(conds_elevs[wind][0], conds_elevs[wind][1]-1, -15)
+                    #stims[ds, wind, el] = offsets[el]
+                    stims[ds, wind, el, 0] = conds_ds[ds]
+                    stims[ds, wind, el, 1] = conds_winds[wind]
+                    stims[ds, wind, el, 2] = offsets[el]
+                    stims_list.append([conds_ds[ds], conds_winds[wind], offsets[el]])
+                if ds == 1:
+                    offsets = np.arange(conds_elevs[wind][0], conds_elevs[wind][1]-1, -5)
+                    #stims[ds, wind, el] = offsets[el]
+                    stims[ds, wind, el, 0] = conds_ds[ds]
+                    stims[ds, wind, el, 1] = conds_winds[wind]
+                    stims[ds, wind, el, 2] = offsets[el]
+                    stims_list.append([conds_ds[ds], conds_winds[wind], offsets[el]])
+                    
+#%% analysis masks 
+list_receptive_fields_biig = []
+list_receptive_fields_smol = []
+#for cell in range(np.shape(AUCs_all_cells)[0]):
+for cell in range(10):
+    rf_matrix_total_avg_biig, rf_matrix_total_avg_smol = tb.create_stimulus_mask(stims_list, AUCs_all_cells[cell])
+    list_receptive_fields_biig.append(rf_matrix_total_avg_biig)
+    list_receptive_fields_smol.append(rf_matrix_total_avg_smol)
+    tb.plot_rf(rf_matrix_total_avg_biig)
+    tb.plot_rf(rf_matrix_total_avg_smol)
+
+# figs, axs = plt.subplots(5, 2, figsize = (20, 10))
+# for i in range(len(axs)):
+#     # Use the Axes object (`ax`) for plotting
+#     cax = axs[i].imshow(list_receptive_fields[i], origin='upper', cmap='hot', interpolation='nearest')
+#     fig.colorbar(cax, ax=axs[i], label='RF Intensity')  # Add colorbar to the figure
+    
+#     # Set labels and title using the Axes object
+#     axs[i].set_xlabel('Azimuth (deg)')
+#     axs[i].set_ylabel('Elevation (deg)')
+#     axs[i].set_title('Receptive Field of Cell')
+
+

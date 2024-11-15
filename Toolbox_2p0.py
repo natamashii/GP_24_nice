@@ -226,15 +226,11 @@ def sort_times(sorted_cells, time_sorting, t_min):
             # get amount of frames for this repetition
             interval = end - start
             # append to pre allocated array
-            time_sorted_cells = np.concat((time_sorted_cells, sorted_cells[:, start:end]), axis=1)
+            time_sorted_cells = np.concatenate((time_sorted_cells, sorted_cells[:, start:end]), axis=1)
             time_counter += interval
     # exclude first col (placeholder col)
     time_sorted_cells = time_sorted_cells[:, 1:]
     return time_sorted_cells
-
-# function to convert time point into calcium frame indices
-def convert_time_frame(frame_times, time_point_variable):
-    return min(enumerate(frame_times), key=lambda x: abs(x[1] - time_point_variable))[0]
 
 # function to get t_min & t_max of Dot Stimulus Interval
 def t_min_max(indices):
