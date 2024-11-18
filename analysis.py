@@ -196,7 +196,22 @@ for cell in range(10):
     list_receptive_fields_smol.append(rf_matrix_total_avg_smol)
     tb.plot_rf(rf_matrix_total_avg_biig)
     tb.plot_rf(rf_matrix_total_avg_smol)
-
+    
+## classify RF center pos and cell id
+center_cells_big_dot = []
+cells_index_big_dot = []
+center_cells_small_dot = []
+cells_index_small_dot = []
+for cell in range(np.shape(list_receptive_fields_biig)[0]):
+    max_bd = np.max(list_receptive_fields_biig[cell])
+    max_sd = np.max(list_receptive_fields_smol[cell])
+    if max_bd > max_sd:
+        center_cells_big_dot.append(np.unravel_index(np.argmax(list_receptive_fields_biig[cell]), np.shape(list_receptive_fields_biig[cell])))
+        cells_index_big_dot.append(best_cells[cell].astype(int))
+    else:
+        center_cells_small_dot.append(np.unravel_index(np.argmax(list_receptive_fields_smol[cell]), np.shape(list_receptive_fields_smol[cell])))
+        cells_index_small_dot.append(best_cells[cell].astype(int))
+    
 # figs, axs = plt.subplots(5, 2, figsize = (20, 10))
 # for i in range(len(axs)):
 #     # Use the Axes object (`ax`) for plotting
