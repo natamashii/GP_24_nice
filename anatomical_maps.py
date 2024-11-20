@@ -17,8 +17,9 @@ data_path = "//172.25.250.112/arrenberg_data/shared/GP_24/12112024/GP_12112024_f
 # create rf plots and return variables for anatomical maps
 #center_rf_cells_bd, cells_index_bd, center_rf_cells_sd, cells_index_sd = analysis_complete(data_path, plot_name)
 
-plt.rcParams['xtick.labelsize'] = 14
-plt.rcParams['ytick.labelsize'] = 14
+plt.rcParams['xtick.labelsize'] = 18
+plt.rcParams['ytick.labelsize'] = 18
+
 #%% LOOP
 # - loop over all files and sort 
 
@@ -146,7 +147,7 @@ red_hues = [
 fig = plt.figure(figsize=(15, 12))
 ax = fig.add_subplot(111)
 cax=ax.imshow(ref_img_60, cmap='gray', origin='lower')
-ax.set_title("Optic tectum 60 um dorsal of anterior Commissure", fontsize = 20)
+ax.set_title("Optic Tectum 60 µm Dorsal of Landmark", fontsize = 20)
 
 
 
@@ -245,8 +246,8 @@ normalized = (values - 45) / (360 - 45)  # Normalize values between 0 and 1
 colors = [[1, norm, norm] for norm in normalized]
 # Create a colormap from the colors
 cmap_bd = mcolors.ListedColormap(colors)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Azimuth [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Big Dot Azimuth [°]')
+cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
 tick_positions = np.linspace(0, 1, 8) 
@@ -265,8 +266,8 @@ normalized = (values - 45) / (360 - 45)  # Normalize values between 0 and 1
 colors = [[norm, norm, 1] for norm in normalized]
 # Create a colormap from the colors
 cmap_sd = mcolors.ListedColormap(colors)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Azimuth [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Small Dot Azimuth [°]')
+cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
 tick_positions = np.linspace(0, 1, 8) 
@@ -277,9 +278,24 @@ tick_labels = np.arange(0, 359, 45)
 cbar.set_ticks(tick_positions) 
 cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
 
+# Dynamically determine x-axis range
+x_min, x_max = plt.gca().get_xlim()
+# Calculate 3 evenly spaced ticks
+ticks = np.linspace(x_min, x_max, 3)  # Creates 3 equally spaced positions
+labels = ['Left', 'Medial', 'Right']  # Labels for the ticks
+# Apply ticks and labels to the x-axis
+ax.set_xticks(ticks)  # Set tick positions
+ax.set_xticklabels(labels)  # Set tick labels
 
-ax.set_xlabel("X Position", fontsize = 16)
-ax.set_ylabel("Y Position", fontsize = 16)
+# Dynamically determine y-axis range
+y_min, y_max = ax.get_ylim()  # Get y-axis limits from the axis
+# Calculate 2 evenly spaced ticks
+yticks = np.linspace(y_min, y_max, 2)  # Creates 2 equally spaced positions
+ytick_labels = ['Rostral', 'Caudal']  # Labels for the ticks
+# Apply ticks and labels to the y-axis
+ax.set_yticks(yticks)  # Set tick positions
+ax.set_yticklabels(ytick_labels)  # Set tick labels
+
 ax.invert_yaxis()
 
 
@@ -292,7 +308,7 @@ plt.show()
 fig = plt.figure(figsize=(15, 12))
 ax = fig.add_subplot(111)
 cax=ax.imshow(ref_img_60, cmap='gray', origin='lower')
-ax.set_title("Optic tectum 60 um dorsal of anterior Commissure", fontsize = 20)
+ax.set_title("Optic Tectum 60 µm Dorsal of Landmark", fontsize = 20)
 
 
 for i in range(len(best_cells_pos_bd_ar_60)):
@@ -318,17 +334,18 @@ greens = (values - 31) / (151 - 31)  # Normalize green component between 0 and 1
 colors_bd = [[1, green, 1] for green in greens]
 # Create a colormap from the colors
 cmap_bd = mcolors.ListedColormap(colors_bd)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Elevation [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Big Dot Elevation [°]')
+cbar.ax.yaxis.label.set_size(20)
+
 
 # Define tick positions and labels 
-tick_positions = np.linspace(0, 1, 8) 
+tick_positions = np.linspace(0, 1, 13) 
 # Normalized ticks from 0 to 1 (9 ticks) 
-tick_labels = np.arange(0, 359, 45) 
+tick_labels = np.arange(-90, 91, 15) 
 # Labels from 0 to 360 in steps of 45
 # Set ticks and labels 
 cbar.set_ticks(tick_positions) 
-cbar.set_ticklabels([f'{label}°' for label in tick_labels]) # Add degree symbols
+cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
 
 
 # Define the range of values
@@ -338,20 +355,37 @@ pinks = (values - 43) / (139 - 43)  # Normalize values between 0 and 1
 colors_sd = [[norm, 1, norm] for norm in pinks]
 # Create a colormap from the colors
 cmap_sd = mcolors.ListedColormap(colors_sd)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Elevation [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Small Dot Elevation [°]')
+cbar.ax.yaxis.label.set_size(20)
+
 
 # Define tick positions and labels 
-tick_positions = np.linspace(0, 1, 8) 
+tick_positions = np.linspace(0, 1, 13) 
 # Normalized ticks from 0 to 1 (9 ticks) 
-tick_labels = np.arange(0, 359, 45) 
+tick_labels = np.arange(-90, 91, 15) 
 # Labels from 0 to 360 in steps of 45
 # Set ticks and labels 
 cbar.set_ticks(tick_positions) 
 cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
 
-ax.set_xlabel("X Position", fontsize = 16)
-ax.set_ylabel("Y Position", fontsize = 16)
+# Dynamically determine x-axis range
+x_min, x_max = plt.gca().get_xlim()
+# Calculate 3 evenly spaced ticks
+ticks = np.linspace(x_min, x_max, 3)  # Creates 3 equally spaced positions
+labels = ['Left', 'Medial', 'Right']  # Labels for the ticks
+# Apply ticks and labels to the x-axis
+ax.set_xticks(ticks)  # Set tick positions
+ax.set_xticklabels(labels)  # Set tick labels
+
+# Dynamically determine y-axis range
+y_min, y_max = ax.get_ylim()  # Get y-axis limits from the axis
+# Calculate 2 evenly spaced ticks
+yticks = np.linspace(y_min, y_max, 2)  # Creates 2 equally spaced positions
+ytick_labels = ['Rostral', 'Caudal']  # Labels for the ticks
+# Apply ticks and labels to the y-axis
+ax.set_yticks(yticks)  # Set tick positions
+ax.set_yticklabels(ytick_labels)  # Set tick labels
+
 ax.invert_yaxis()
 plt.show()
 #plt.savefig(, kwargs)
@@ -395,7 +429,7 @@ for rec in dorsal_40_list:
 fig = plt.figure(figsize=(15, 12))
 ax = fig.add_subplot(111)
 cax=ax.imshow(ref_img_40, cmap='gray', origin='lower')
-ax.set_title("Optic tectum 40 um dorsal of anterior Commissure", fontsize = 20)
+ax.set_title("Optic Tectum 40 µm Dorsal of Landmark", fontsize = 20)
 
 
 
@@ -426,8 +460,8 @@ normalized = (values - 45) / (360 - 45)  # Normalize values between 0 and 1
 colors = [[1, norm, norm] for norm in normalized]
 # Create a colormap from the colors
 cmap_bd = mcolors.ListedColormap(colors)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Azimuth [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Big Dot Azimuth [°]')
+cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
 tick_positions = np.linspace(0, 1, 8) 
@@ -445,8 +479,8 @@ normalized = (values - 45) / (360 - 45)  # Normalize values between 0 and 1
 colors = [[norm, norm, 1] for norm in normalized]
 # Create a colormap from the colors
 cmap_sd = mcolors.ListedColormap(colors)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Azimuth [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Small Dot Azimuth [°]')
+cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
 tick_positions = np.linspace(0, 1, 8) 
@@ -457,8 +491,24 @@ tick_labels = np.arange(0, 359, 45)
 cbar.set_ticks(tick_positions) 
 cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
 
-ax.set_xlabel("X Position", fontsize = 16)
-ax.set_ylabel("Y Position", fontsize = 16)
+# Dynamically determine x-axis range
+x_min, x_max = plt.gca().get_xlim()
+# Calculate 3 evenly spaced ticks
+ticks = np.linspace(x_min, x_max, 3)  # Creates 3 equally spaced positions
+labels = ['Left', 'Medial', 'Right']  # Labels for the ticks
+# Apply ticks and labels to the x-axis
+ax.set_xticks(ticks)  # Set tick positions
+ax.set_xticklabels(labels)  # Set tick labels
+
+# Dynamically determine y-axis range
+y_min, y_max = ax.get_ylim()  # Get y-axis limits from the axis
+# Calculate 2 evenly spaced ticks
+yticks = np.linspace(y_min, y_max, 2)  # Creates 2 equally spaced positions
+ytick_labels = ['Caudal', 'Rostral']  # Labels for the ticks
+# Apply ticks and labels to the y-axis
+ax.set_yticks(yticks)  # Set tick positions
+ax.set_yticklabels(ytick_labels)  # Set tick labels
+
 ax.invert_yaxis()
 plt.show()
 
@@ -468,7 +518,7 @@ plt.show()
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111)
 cax=ax.imshow(ref_img_40, cmap='gray', origin='lower')
-ax.set_title("Optic tectum 40 um dorsal of anterior Commissure", fontsize = 20)
+ax.set_title("Optic Tectum 40 µm Dorsal of Landmark", fontsize = 20)
 
 for i in range(len(best_cells_pos_bd_ar_40)):
     # Drop the first column and reset the index for consistent indexing
@@ -493,18 +543,19 @@ greens = (values - 31) / (151 - 31)  # Normalize green component between 0 and 1
 colors_bd = [[1, green, 1] for green in greens]
 # Create a colormap from the colors
 cmap_bd = mcolors.ListedColormap(colors_bd)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Elevation [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Big Dot Elevation [°]')
+cbar.ax.yaxis.label.set_size(20)
+
 
 # Define tick positions and labels 
-tick_positions = np.linspace(0, 1, 8) 
+tick_positions = np.linspace(0, 1, 13) 
 # Normalized ticks from 0 to 1 (9 ticks) 
-tick_labels = np.arange(0, 359, 45) 
+tick_labels = np.arange(-90, 91, 15) 
+# Labels from 0 to 360 in steps of 45
 # Labels from 0 to 360 in steps of 45
 # Set ticks and labels 
 cbar.set_ticks(tick_positions) 
-cbar.set_ticklabels([f'{label}°' for label in tick_labels]) # Add degree symbols
-
+cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
 
 # Define the range of values
 values = np.linspace(43, 139, 1024)  # Generate values between 43 and 139
@@ -513,20 +564,37 @@ pinks = (values - 43) / (139 - 43)  # Normalize values between 0 and 1
 colors_sd = [[norm, 1, norm] for norm in pinks]
 # Create a colormap from the colors
 cmap_sd = mcolors.ListedColormap(colors_sd)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Elevation [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Small Dot Elevation [°]')
+cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
-tick_positions = np.linspace(0, 1, 8) 
+tick_positions = np.linspace(0, 1, 13) 
 # Normalized ticks from 0 to 1 (9 ticks) 
-tick_labels = np.arange(0, 359, 45) 
+tick_labels = np.arange(-90, 91, 15) 
 # Labels from 0 to 360 in steps of 45
 # Set ticks and labels 
 cbar.set_ticks(tick_positions) 
 cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
 
-ax.set_xlabel("X Position", fontsize = 16)
-ax.set_ylabel("Y Position", fontsize = 16)
+# Dynamically determine x-axis range
+x_min, x_max = plt.gca().get_xlim()
+# Calculate 3 evenly spaced ticks
+ticks = np.linspace(x_min, x_max, 3)  # Creates 3 equally spaced positions
+labels = ['Left', 'Medial', 'Right']  # Labels for the ticks
+# Apply ticks and labels to the x-axis
+ax.set_xticks(ticks)  # Set tick positions
+ax.set_xticklabels(labels)  # Set tick labels
+
+# Dynamically determine y-axis range
+y_min, y_max = ax.get_ylim()  # Get y-axis limits from the axis
+# Calculate 2 evenly spaced ticks
+yticks = np.linspace(y_min, y_max, 2)  # Creates 2 equally spaced positions
+ytick_labels = ['Caudal', 'Rostral']  # Labels for the ticks
+# Apply ticks and labels to the y-axis
+ax.set_yticks(yticks)  # Set tick positions
+ax.set_yticklabels(ytick_labels)  # Set tick labels
+
+
 ax.invert_yaxis()
 plt.show()
 
@@ -568,7 +636,7 @@ for rec in ventral_20_list:
 fig = plt.figure(figsize=(15, 12))
 ax = fig.add_subplot(111)
 cax=ax.imshow(ref_img_20, cmap='gray', origin='lower')
-ax.set_title("Pretectum 20 um ventral of anterior Commisure", fontsize = 20)
+ax.set_title("Pretectum 20 µm Ventral of Landmark", fontsize = 20)
 
 
 for i in range(len(best_cells_pos_bd_ar_20)):
@@ -598,8 +666,8 @@ normalized = (values - 45) / (360 - 45)  # Normalize values between 0 and 1
 colors = [[1, norm, norm] for norm in normalized]
 # Create a colormap from the colors
 cmap_bd = mcolors.ListedColormap(colors)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Azimuth [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Big Dot Azimuth [°]')
+cbar.ax.yaxis.label.set_size(20)
 
 
 # Define tick positions and labels 
@@ -610,7 +678,6 @@ tick_labels = np.arange(0, 359, 45)
 # Set ticks and labels 
 cbar.set_ticks(tick_positions) 
 cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
-
 
 # Define the range of values
 values = np.linspace(45, 360, 1024)  # Generate values between 45 and 360
@@ -619,8 +686,8 @@ normalized = (values - 45) / (360 - 45)  # Normalize values between 0 and 1
 colors = [[norm, norm, 1] for norm in normalized]
 # Create a colormap from the colors
 cmap_sd = mcolors.ListedColormap(colors)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Azimuth [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Small Dot Azimuth [°]')
+cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
 tick_positions = np.linspace(0, 1, 8) 
@@ -631,8 +698,24 @@ tick_labels = np.arange(0, 359, 45)
 cbar.set_ticks(tick_positions) 
 cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
 
-ax.set_xlabel("X Position", fontsize = 16)
-ax.set_ylabel("Y Position", fontsize = 16)
+# Dynamically determine x-axis range
+x_min, x_max = plt.gca().get_xlim()
+# Calculate 3 evenly spaced ticks
+ticks = np.linspace(x_min, x_max, 3)  # Creates 3 equally spaced positions
+labels = ['Left', 'Medial', 'Right']  # Labels for the ticks
+# Apply ticks and labels to the x-axis
+ax.set_xticks(ticks)  # Set tick positions
+ax.set_xticklabels(labels)  # Set tick labels
+
+# Dynamically determine y-axis range
+y_min, y_max = ax.get_ylim()  # Get y-axis limits from the axis
+# Calculate 2 evenly spaced ticks
+yticks = np.linspace(y_min, y_max, 2)  # Creates 2 equally spaced positions
+ytick_labels = ['Caudal', 'Rostral']  # Labels for the ticks
+# Apply ticks and labels to the y-axis
+ax.set_yticks(yticks)  # Set tick positions
+ax.set_yticklabels(ytick_labels)  # Set tick labels
+
 ax.invert_yaxis()
 plt.show()
 
@@ -642,7 +725,7 @@ plt.show()
 fig = plt.figure(figsize=(15, 12))
 ax = fig.add_subplot(111)
 cax=ax.imshow(ref_img_20, cmap='gray', origin='lower')
-ax.set_title("Pretectum 20 um ventral of anterior Commisure", fontsize = 20)
+ax.set_title("Pretectum 20 µm Ventral of Landmark", fontsize = 20)
 
 for i in range(len(best_cells_pos_bd_ar_20)):
     # Drop the first column and reset the index for consistent indexing
@@ -667,18 +750,19 @@ greens = (values - 31) / (151 - 31)  # Normalize green component between 0 and 1
 colors_bd = [[1, green, 1] for green in greens]
 # Create a colormap from the colors
 cmap_bd = mcolors.ListedColormap(colors_bd)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Elevation [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Big Dot Elevation [°]')
+cbar.ax.yaxis.label.set_size(20)
+
 
 # Define tick positions and labels 
-tick_positions = np.linspace(0, 1, 8) 
+tick_positions = np.linspace(0, 1, 13) 
 # Normalized ticks from 0 to 1 (9 ticks) 
-tick_labels = np.arange(0, 359, 45) 
+tick_labels = np.arange(-90, 91, 15) 
+# Labels from 0 to 360 in steps of 45
 # Labels from 0 to 360 in steps of 45
 # Set ticks and labels 
 cbar.set_ticks(tick_positions) 
 cbar.set_ticklabels([f'{label}°' for label in tick_labels]) # Add degree symbols
-
 
 # Define the range of values
 values = np.linspace(43, 139, 1024)  # Generate values between 43 and 139
@@ -687,20 +771,54 @@ pinks = (values - 43) / (139 - 43)  # Normalize values between 0 and 1
 colors_sd = [[norm, 1, norm] for norm in pinks]
 # Create a colormap from the colors
 cmap_sd = mcolors.ListedColormap(colors_sd)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Elevation [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Small Dot Elevation [°]')
+cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
-tick_positions = np.linspace(0, 1, 8) 
+tick_positions = np.linspace(0, 1, 13)  
 # Normalized ticks from 0 to 1 (9 ticks) 
-tick_labels = np.arange(0, 359, 45) 
+tick_labels = np.arange(-90, 91, 15) 
 # Labels from 0 to 360 in steps of 45
 # Set ticks and labels 
 cbar.set_ticks(tick_positions) 
 cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
 
-ax.set_xlabel("X Position", fontsize = 16)
-ax.set_ylabel("Y Position", fontsize = 16)
+# Dynamically determine x-axis range
+x_min, x_max = plt.gca().get_xlim()
+# Calculate 3 evenly spaced ticks
+ticks = np.linspace(x_min, x_max, 3)  # Creates 3 equally spaced positions
+labels = ['Left', 'Medial', 'Right']  # Labels for the ticks
+# Apply ticks and labels to the x-axis
+ax.set_xticks(ticks)  # Set tick positions
+ax.set_xticklabels(labels)  # Set tick labels
+
+# Dynamically determine y-axis range
+y_min, y_max = ax.get_ylim()  # Get y-axis limits from the axis
+# Calculate 2 evenly spaced ticks
+yticks = np.linspace(y_min, y_max, 2)  # Creates 2 equally spaced positions
+ytick_labels = ['Caudal', 'Rostral']  # Labels for the ticks
+# Apply ticks and labels to the y-axis
+ax.set_yticks(yticks)  # Set tick positions
+ax.set_yticklabels(ytick_labels)  # Set tick labels
+
+# Dynamically determine x-axis range
+x_min, x_max = plt.gca().get_xlim()
+# Calculate 3 evenly spaced ticks
+ticks = np.linspace(x_min, x_max, 3)  # Creates 3 equally spaced positions
+labels = ['Left', 'Medial', 'Right']  # Labels for the ticks
+# Apply ticks and labels to the x-axis
+ax.set_xticks(ticks)  # Set tick positions
+ax.set_xticklabels(labels)  # Set tick labels
+
+# Dynamically determine y-axis range
+y_min, y_max = ax.get_ylim()  # Get y-axis limits from the axis
+# Calculate 2 evenly spaced ticks
+yticks = np.linspace(y_min, y_max, 2)  # Creates 2 equally spaced positions
+ytick_labels = ['Caudal', 'Rostral']  # Labels for the ticks
+# Apply ticks and labels to the y-axis
+ax.set_yticks(yticks)  # Set tick positions
+ax.set_yticklabels(ytick_labels)  # Set tick labels
+
 ax.invert_yaxis()
 plt.show()
 
@@ -742,7 +860,7 @@ for rec in ventral_00_list:
 fig = plt.figure(figsize=(15, 12))
 ax = fig.add_subplot(111)
 cax=ax.imshow(ref_img, cmap='gray', origin='lower')
-ax.set_title("Optic tectum at anterior Commissure", fontsize = 20)
+ax.set_title("Optic Tectum at Landmark", fontsize = 20)
 
 
 for i in range(len(best_cells_pos_bd_ar)):
@@ -772,8 +890,8 @@ normalized = (values - 45) / (360 - 45)  # Normalize values between 0 and 1
 colors = [[1, norm, norm] for norm in normalized]
 # Create a colormap from the colors
 cmap_bd = mcolors.ListedColormap(colors)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Azimuth [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Big Dot Azimuth [°]')
+cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
 tick_positions = np.linspace(0, 1, 8) 
@@ -792,8 +910,8 @@ normalized = (values - 45) / (360 - 45)  # Normalize values between 0 and 1
 colors = [[norm, norm, 1] for norm in normalized]
 # Create a colormap from the colors
 cmap_sd = mcolors.ListedColormap(colors)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Azimuth [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Small Dot Azimuth [°]')
+cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
 tick_positions = np.linspace(0, 1, 8) 
@@ -804,8 +922,24 @@ tick_labels = np.arange(0, 359, 45)
 cbar.set_ticks(tick_positions) 
 cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
 
-ax.set_xlabel("X Position", fontsize = 16)
-ax.set_ylabel("Y Position", fontsize = 16)
+# Dynamically determine x-axis range
+x_min, x_max = plt.gca().get_xlim()
+# Calculate 3 evenly spaced ticks
+ticks = np.linspace(x_min, x_max, 3)  # Creates 3 equally spaced positions
+labels = ['Left', 'Medial', 'Right']  # Labels for the ticks
+# Apply ticks and labels to the x-axis
+ax.set_xticks(ticks)  # Set tick positions
+ax.set_xticklabels(labels)  # Set tick labels
+
+# Dynamically determine y-axis range
+y_min, y_max = ax.get_ylim()  # Get y-axis limits from the axis
+# Calculate 2 evenly spaced ticks
+yticks = np.linspace(y_min, y_max, 2)  # Creates 2 equally spaced positions
+ytick_labels = ['Caudal', 'Rostral']  # Labels for the ticks
+# Apply ticks and labels to the y-axis
+ax.set_yticks(yticks)  # Set tick positions
+ax.set_yticklabels(ytick_labels)  # Set tick labels
+
 ax.invert_yaxis()
 plt.show()
 
@@ -815,7 +949,7 @@ plt.show()
 fig = plt.figure(figsize=(15, 12))
 ax = fig.add_subplot(111)
 cax=ax.imshow(ref_img, cmap='gray', origin='lower')
-ax.set_title("Optic tectum at anterior Commissure", fontsize = 20)
+ax.set_title("Optic Tectum at Landmark", fontsize = 20)
 
 for i in range(len(best_cells_pos_bd_ar)):
     # Drop the first column and reset the index for consistent indexing
@@ -840,13 +974,13 @@ greens = (values - 31) / (151 - 31)  # Normalize green component between 0 and 1
 colors_bd = [[1, green, 1] for green in greens]
 # Create a colormap from the colors
 cmap_bd = mcolors.ListedColormap(colors_bd)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Elevation [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Big Dot Elevation [°]')
+cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
-tick_positions = np.linspace(0, 1, 8) 
+tick_positions = np.linspace(0, 1, 13) 
 # Normalized ticks from 0 to 1 (9 ticks) 
-tick_labels = np.arange(0, 359, 45) 
+tick_labels = np.arange(-90, 91, 15) 
 # Labels from 0 to 360 in steps of 45
 # Set ticks and labels 
 cbar.set_ticks(tick_positions) 
@@ -859,20 +993,37 @@ pinks = (values - 43) / (139 - 43)  # Normalize values between 0 and 1
 colors_sd = [[norm, 1, norm] for norm in pinks]
 # Create a colormap from the colors
 cmap_sd = mcolors.ListedColormap(colors_sd)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Elevation [°]')
-cbar.ax.yaxis.label.set_size(16)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Small Dot Elevation [°]')
+cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
-tick_positions = np.linspace(0, 1, 8) 
+tick_positions = np.linspace(0, 1, 13) 
 # Normalized ticks from 0 to 1 (9 ticks) 
-tick_labels = np.arange(0, 359, 45) 
+tick_labels = np.arange(-90, 91, 15) 
 # Labels from 0 to 360 in steps of 45
 # Set ticks and labels 
 cbar.set_ticks(tick_positions) 
 cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
 
-ax.set_xlabel("X Position", fontsize = 16)
-ax.set_ylabel("Y Position", fontsize = 16)
+
+# Dynamically determine x-axis range
+x_min, x_max = plt.gca().get_xlim()
+# Calculate 3 evenly spaced ticks
+ticks = np.linspace(x_min, x_max, 3)  # Creates 3 equally spaced positions
+labels = ['Left', 'Medial', 'Right']  # Labels for the ticks
+# Apply ticks and labels to the x-axis
+ax.set_xticks(ticks)  # Set tick positions
+ax.set_xticklabels(labels)  # Set tick labels
+
+# Dynamically determine y-axis range
+y_min, y_max = ax.get_ylim()  # Get y-axis limits from the axis
+# Calculate 2 evenly spaced ticks
+yticks = np.linspace(y_min, y_max, 2)  # Creates 2 equally spaced positions
+ytick_labels = ['Caudal', 'Rostral']  # Labels for the ticks
+# Apply ticks and labels to the y-axis
+ax.set_yticks(yticks)  # Set tick positions
+ax.set_yticklabels(ytick_labels)  # Set tick labels
+
 ax.invert_yaxis()
 plt.show()
 
