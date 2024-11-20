@@ -134,16 +134,16 @@ def analysis_complete(data_path, plot_name):
     
     # interpolation makes it kinda blurry
     
-    fig, axs = plt.subplots()
-    pixelplot = axs.imshow(time_sorted_cells, cmap="PiYG")
-    pixelplot.set_clim(np.nanmin(time_sorted_cells), np.nanmax(time_sorted_cells))
+    # fig, axs = plt.subplots()
+    # pixelplot = axs.imshow(time_sorted_cells, cmap="PiYG")
+    # pixelplot.set_clim(np.nanmin(time_sorted_cells), np.nanmax(time_sorted_cells))
     
-    axs.set_xlabel("Time [s]")
-    axs.set_ylabel("Cells")
-    axs.set_title("Cells of Rec 1 Fish 1 Day 1, Only DFF, attempted sort")
-    fig.colorbar(pixelplot)
+    # axs.set_xlabel("Time [s]")
+    # axs.set_ylabel("Cells")
+    # axs.set_title("Cells of Rec 1 Fish 1 Day 1, Only DFF, attempted sort")
+    # fig.colorbar(pixelplot)
     
-    plt.show(block=False)
+    # plt.show(block=False)
     
     #%% get average dffover repetitions for each condition and cell
     mean_dff_bcs, new_inds = tt.get_mean_dff_trace(chosen_cells, indices)
@@ -190,14 +190,26 @@ def analysis_complete(data_path, plot_name):
     list_receptive_fields_biig = []
     list_receptive_fields_smol = []
     #for cell in range(np.shape(AUCs_all_cells)[0]):
+    num_rf_plot = 10
+    counter = 0
+    if np.shape(AUCs_all_cells)[0] < 10:
+        num_rf_plot = np.shape(AUCs_all_cells)[0]
     for cell in range(np.shape(AUCs_all_cells)[0]):
         rf_matrix_total_avg_biig, rf_matrix_total_avg_smol = tb.create_stimulus_mask(stims_list, AUCs_all_cells[cell])
         list_receptive_fields_biig.append(rf_matrix_total_avg_biig)
         list_receptive_fields_smol.append(rf_matrix_total_avg_smol)
-        tb.plot_rf(rf_matrix_total_avg_biig)
-        fig.savefig(f'rf_big_{plot_name}.svg')
-        tb.plot_rf(rf_matrix_total_avg_smol)
-        fig.savefig(f'rf_small_{plot_name}.svg')
+    for plot in range(num_rf_plot):
+        counter += 1
+        fig = plt.figure()
+        ax = fig.add_subplot(111)  # Add a single subplot to the figure
+        tb.plot_rf(fig, ax, list_receptive_fields_biig[plot])
+        fig.savefig(f'rf_big_{plot_name}{counter}.svg')
+        plt.close()
+        fig = plt.figure()
+        ax = fig.add_subplot(111)  # Add a single subplot to the figure
+        tb.plot_rf(fig, ax, list_receptive_fields_smol[plot])
+        fig.savefig(f'rf_small_{plot_name}{counter}.svg')
+        plt.close()
 
         
     #%%
@@ -219,7 +231,10 @@ def analysis_complete(data_path, plot_name):
             # Get the closest azimuths
             closest_azimuths = azimuths[closest_indices]
             #get the azimuth at which the most closest azimuths lay as best azimuth of the cell
-            best_azim = statistics.mode(closest_azimuths)
+            if len(closest_azimuths) != 0:
+                best_azim = statistics.mode(closest_azimuths)
+            else:
+                continue
             #get the elevation and an alternative azimuth value using only the information contained in the max
             best_elev = np.unravel_index(np.argmax(list_receptive_fields_biig[cell]), np.shape(list_receptive_fields_biig[cell]))[0]
             center_rf_cells_bd.append([best_azim, best_elev])
@@ -235,7 +250,10 @@ def analysis_complete(data_path, plot_name):
             # Get the closest azimuths
             closest_azimuths = azimuths[closest_indices]
             #get the azimuth at which the most closest azimuths lay as best azimuth of the cell
-            best_azim = statistics.mode(closest_azimuths)
+            if len(closest_azimuths) != 0:
+                best_azim = statistics.mode(closest_azimuths)
+            else:
+                continue
             #get the elevation and an alternative azimuth value using only the information contained in the max
             best_elev = np.unravel_index(np.argmax(list_receptive_fields_smol[cell]), np.shape(list_receptive_fields_smol[cell]))[0]
             center_rf_cells_sd.append([best_azim, best_elev])

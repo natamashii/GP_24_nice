@@ -70,7 +70,7 @@ def generate_cell_rf(AUCs_all_cells, stims_list):
     return rf_matrix_total
 
 
-def plot_rf(rf_matrix):
+def plot_rf(fig, ax, rf_matrix):
     """
     Plots the receptive field of one cell using a heatmap.
 
@@ -81,8 +81,8 @@ def plot_rf(rf_matrix):
     None
     """
         
-    fig = plt.figure()
-    ax = fig.add_subplot(111)  # Add a single subplot to the figure
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111)  # Add a single subplot to the figure
     
     # Use the Axes object (`ax`) for plotting
     cax = ax.imshow(rf_matrix, origin='upper', cmap='hot', interpolation='nearest')
