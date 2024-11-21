@@ -45,29 +45,29 @@ def calculate_rf(AUC_weights, masks):
     return rf_matrix_all_cells
 
 ###This part is written for the input from one cell
-def generate_cell_rf(AUCs_all_cells, stims_list):
-    """
-    Generates the RF matrix for one cell.
-    Loops over all trials of one cell, computes the RF matrix for each trial, 
-    and superimposes them to generate the RF matrix for the entire cell.
+# def generate_cell_rf(AUCs_all_cells, stims_list):
+#     """
+#     Generates the RF matrix for one cell.
+#     Loops over all trials of one cell, computes the RF matrix for each trial, 
+#     and superimposes them to generate the RF matrix for the entire cell.
     
-    Parameters:
-    dff_traces (list of np.array): List of 1D arrays, each representing a dff trace for a trial.
-    stim_traces (list of np.array): List of 2D arrays, each representing stimulus positions for a trial.
-    elevation_size (int): Number of elevation bins.
-    azimuth_size (int): Number of azimuth bins.
+#     Parameters:
+#     dff_traces (list of np.array): List of 1D arrays, each representing a dff trace for a trial.
+#     stim_traces (list of np.array): List of 2D arrays, each representing stimulus positions for a trial.
+#     elevation_size (int): Number of elevation bins.
+#     azimuth_size (int): Number of azimuth bins.
 
-    Returns:
-    np.array: RF matrix for the entire cell.
-    """
-    rf_matrix_total = np.zeros((elevation_size, azimuth_size))
-    for cell in range(np.shape(AUCs_all_cells)[0]):
-        for dff_trace, stim_trace in zip(AUCs_all_cells, stim_traces):
-            # AUC_weight = AUC_phase(mean_dff_one_cell)
-            mask = create_stimulus_mask(stim_trace, elevation_size, azimuth_size)
-            rf_matrix = calculate_rf(AUC_weight, mask)
-            rf_matrix_total += rf_matrix  # Superimpose RFs
-    return rf_matrix_total
+#     Returns:
+#     np.array: RF matrix for the entire cell.
+#     """
+#     rf_matrix_total = np.zeros((elevation_size, azimuth_size))
+#     for cell in range(np.shape(AUCs_all_cells)[0]):
+#         for dff_trace, stim_trace in zip(AUCs_all_cells, stim_traces):
+#             # AUC_weight = AUC_phase(mean_dff_one_cell)
+#             mask = create_stimulus_mask(stim_trace, elevation_size, azimuth_size)
+#             rf_matrix = calculate_rf(AUC_weight, mask)
+#             rf_matrix_total += rf_matrix  # Superimpose RFs
+#     return rf_matrix_total
 
 
 def plot_rf(fig, ax, rf_matrix):
@@ -85,12 +85,12 @@ def plot_rf(fig, ax, rf_matrix):
     #ax = fig.add_subplot(111)  # Add a single subplot to the figure
     
     # Use the Axes object (`ax`) for plotting
-    cax = ax.imshow(rf_matrix, origin='upper', cmap='hot', interpolation='nearest')
+    cax = ax.imshow(rf_matrix, origin='upper', cmap='hot', interpolation='nearest', aspect='auto')
     fig.colorbar(cax, ax=ax, label='RF Intensity')  # Add colorbar to the figure
-    
+
     # Set labels and title using the Axes object
-    ax.set_xlabel('Azimuth (deg)')
-    ax.set_ylabel('Elevation (deg)')
+    ax.set_xlabel('Azimuth [°]')
+    ax.set_ylabel('Elevation [°]')
     ax.set_title('Receptive Field of Cell')
     
     # Display the plot
@@ -268,30 +268,75 @@ def create_stimulus_mask(stims_list, AUCs_cell):
                                90+stim_phase[2]-np.floor(dot_size/2).astype(int), -1)
 
         if dot_size == 30:
-            #mask[elev_range, azim_range] = 1
             mask[np.ix_(elev_range, azim_range)] = 1
-            masks_all_phases_big.append(mask)
+            # shift so stim is displayed correctly
+            #shift_amount = 90
+            #shifted_mask = np.vstack((mask[-shift_amount:], mask[:-shift_amount]))
+            shifted_mask = np.hstack((mask[:, -90:], mask[:, :-90]))
+            # append to big dot
+            masks_all_phases_big.append(shifted_mask)
         else:
-            #mask[elev_range, azim_range] = 1
             mask[np.ix_(elev_range, azim_range)] = 1
-            masks_all_phases_small.append(mask)
+            # shift so stim is displayed correctly
+            #shift_amount = 90
+            #shifted_mask = np.vstack((mask[-shift_amount:], mask[:-shift_amount]))
+            shifted_mask = np.hstack((mask[:, -90:], mask[:, :-90]))
+            # append to small dot
+            masks_all_phases_small.append(shifted_mask)
+
+    ##############################OLD CODE#################################
+    # # now calculate the weighted mask and subtract? weights on overlap
+    # rf_matrix_all_phases_big = []
+    # rf_matrix_all_phases_small = []
+    # for i in range(len(masks_all_phases_big)):
+    #     rf_matrix = AUCs_cell[i] * masks_all_phases_big[i]
+    #     rf_matrix_all_phases_big.append(rf_matrix)
+    # rf_matrix_total_big = np.dstack(rf_matrix_all_phases_big)
+    # rf_matrix_total_avg_big = np.mean(rf_matrix_total_big, axis=2)
     
+    # for i in range(len(masks_all_phases_small)):
+    #     rf_matrix = AUCs_cell[i] * masks_all_phases_small[i]
+    #     rf_matrix_all_phases_small.append(rf_matrix)
+    # rf_matrix_total_small = np.dstack(rf_matrix_all_phases_small)
+    # rf_matrix_total_avg_small = np.mean(rf_matrix_total_small, axis=2)
+    # return rf_matrix_total_avg_big, rf_matrix_total_avg_small
+    ##############################OLD CODE#################################
     
-    # now do the fucking weighted mask
-    rf_matrix_all_phases_big = []
-    rf_matrix_all_phases_small = []
+    ## calculate correctly weighted mask
+    # big
+    weight_matrix_all_phases_big = np.zeros((180, 360))
     for i in range(len(masks_all_phases_big)):
-        rf_matrix = AUCs_cell[i] * masks_all_phases_big[i]
-        rf_matrix_all_phases_big.append(rf_matrix)
-        rf_matrix_total_big = np.dstack(rf_matrix_all_phases_big)
-        rf_matrix_total_avg_big = np.mean(rf_matrix_total_big, axis=2)
+        weight_matrix_all_phases_big += masks_all_phases_big[i]
+    # assign correct weight value
+    weight_matrix_all_phases_big[weight_matrix_all_phases_big == 2] = 0.5
+    weight_matrix_all_phases_big[weight_matrix_all_phases_big == 3] = 0.25
     
+    # small
+    weight_matrix_all_phases_small = np.zeros((180, 360))
     for i in range(len(masks_all_phases_small)):
-        rf_matrix = AUCs_cell[i] * masks_all_phases_small[i]
-        rf_matrix_all_phases_small.append(rf_matrix)
-        rf_matrix_total_small = np.dstack(rf_matrix_all_phases_small)
-        rf_matrix_total_avg_small = np.mean(rf_matrix_total_small, axis=2)
-    return rf_matrix_total_avg_big, rf_matrix_total_avg_small
+        weight_matrix_all_phases_small += masks_all_phases_small[i]
+    # assign correct weight value
+    weight_matrix_all_phases_small[weight_matrix_all_phases_small == 2] = 0.5
+    weight_matrix_all_phases_small[weight_matrix_all_phases_small == 4] = 0.25
+    
+    ## now do the fucking weighted mask
+    # big
+    for i in range(len(masks_all_phases_big)):
+        weight_matrix_all_phases_big[masks_all_phases_big[i]==1] *= AUCs_cell[i]
+    # small
+    for i in range(len(masks_all_phases_small)):
+        weight_matrix_all_phases_small[masks_all_phases_small[i]==1] *= AUCs_cell[i]
+
+    return weight_matrix_all_phases_big, weight_matrix_all_phases_small
+
+
+
+
+
+
+
+
+    
 
 
 # this function returns the AUC values for all cells
@@ -304,12 +349,31 @@ def get_AUCs(mean_dff_best_cells, new_inds, num_stim):
             for window in range(len(new_inds[d])):
                 for elevation in range(len(new_inds[d, window])):
                     if not np.isnan(new_inds[d, window, elevation]).any():
-                        AUC = np.trapz(mean_dff_best_cells[cell, int(new_inds[d, window, elevation, 0]):
+                        AUC = np.max(mean_dff_best_cells[cell, int(new_inds[d, window, elevation, 0]):
                                                            int(new_inds[d, window, elevation, 1])])
                         AUCs_cell.append(AUC)
 
         AUCs_all_cells[cell, : ] = AUCs_cell
     return AUCs_all_cells
+
+
+# calculate mean of averaged dff trace
+# this function returns the AUC values for all cells
+def mean_dff_value_phase(mean_dff_best_cells, new_inds, num_stim):
+    # calculate AUC:
+    mean_all_cells = np.zeros((np.shape(mean_dff_best_cells)[0], num_stim))
+    for cell in range(np.shape(mean_all_cells)[0]):
+        AUCs_cell = []
+        for d in range(len(new_inds)):
+            for window in range(len(new_inds[d])):
+                for elevation in range(len(new_inds[d, window])):
+                    if not np.isnan(new_inds[d, window, elevation]).any():
+                        AUC = np.mean(mean_dff_best_cells[cell, int(new_inds[d, window, elevation, 0]):
+                                                           int(new_inds[d, window, elevation, 1])])
+                        AUCs_cell.append(AUC)
+
+        mean_all_cells[cell, : ] = AUCs_cell
+    return mean_all_cells
 #%% 
 # get classification of rfs from weights/activity of cells!
 # greyscale for how much cell likes certain stim and then color code for big/small dot!

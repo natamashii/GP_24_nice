@@ -1,4 +1,5 @@
 from analysis_samu import analysis_complete
+from analysis_samu import calculate_dff_trace
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -6,6 +7,8 @@ from matplotlib.pyplot import cm
 import matplotlib.colors as mcolors
 import pandas as pd
 import matplotlib as mpl
+
+
 #%%
 # import data for rf
 data_path = "//172.25.250.112/arrenberg_data/shared/GP_24/12112024/GP_12112024_fish1_rec1/"
@@ -84,6 +87,7 @@ for i in master_recording_paths:
 
 
 
+
 #%% anatomical maps
 best_cells_pos_bd_ar_60 = []
 best_cells_pos_sd_ar_60 = []
@@ -92,15 +96,21 @@ center_rf_sd_ar_60 = []
 
 # load mean img from suite2p
 ref_img_60 = np.load(f'{data_path}/suite2p/plane0/ops.npy', allow_pickle=True).item()['meanImg']
-rec_counter = 0
+
+rec_counter = 1
 for rec in dorsal_60_list:
     # load cell positions
     #all_cells_pos = pd.read_pickle(f'{rec}/cell_positions_transformed.pkl')
     # Open the CSV file
+    print(rec)
     all_cells_pos = pd.read_csv(f'{rec}/cell_positions_transformed.csv')
     
+
+    
+    
+    
     # define plot name dynamically
-    plot_name = str(rec.split('/')[-1])+ "_receptive_field"
+    plot_name = str(rec.split('/')[-1])+ "_receptive_field"+f"_rec{rec_counter}"
         
     # create rf plots and return variables for anatomical maps
     center_rf_cells_bd, cells_index_bd, center_rf_cells_sd, cells_index_sd = analysis_complete(rec, plot_name, rec_counter)
@@ -114,19 +124,24 @@ for rec in dorsal_60_list:
     best_cells_pos_sd_ar_60.append(best_cells_pos_sd)
     center_rf_bd_ar_60.append(center_rf_cells_bd)
     center_rf_sd_ar_60.append(center_rf_cells_sd)
-    rec_counter += 1
+    
+    # increase counter
+    rec_counter +=1
+    
 
-#%%
+#%% PLOTS
+
+##############
 # Plot Azimuth
 fig = plt.figure(figsize = (20,10))
 ax = fig.add_subplot(111)
 cax=ax.imshow(ref_img_60, cmap='gray', origin='lower')
 ax.set_title("Optic Tectum 60 µm Dorsal of Landmark")
 
-cmap_big = mpl.cm.get_cmap('Wistia')  # andere Farbe nehmen
+cmap_big = mpl.cm.get_cmap('summer')  # andere Farbe nehmen
 cmap_small = mpl.cm.get_cmap('cool')#
-cmap_big_elevation = mpl.cm.get_cmap('Wistia')  # andere Farbe nehmen
-cmap_small_elevation = mpl.cm.get_cmap('cool')
+cmap_big_elevation = mpl.cm.get_cmap('hot')  # andere Farbe nehmen
+cmap_small_elevation = mpl.cm.get_cmap('winter')
 
 for i in range(len(best_cells_pos_bd_ar_60)):
     # Drop the first column and reset the index for consistent indexing
@@ -136,7 +151,7 @@ for i in range(len(best_cells_pos_bd_ar_60)):
 
     for cell_bd in range(len(current_pos_bd)):
         #color = [1, (center_rf_bd_ar_60[i][cell_bd][0]-45)/(360-45), (center_rf_bd_ar_60[i][cell_bd][0]-45)/(360-45)]
-        color = cmap_big((center_rf_bd_ar_60[i][cell_bd][0] - (-180)) / (180 - (-180)))
+        color = cmap_big((center_rf_bd_ar_60[i][cell_bd][0] - 45) / (360 - 45))
         if center_rf_bd_ar_60[i][cell_bd][0] == 0:
             color = cmap_big(1.0)
         sax_bd = ax.scatter(current_pos_bd.iloc[cell_bd]['y'], current_pos_bd.iloc[cell_bd]['x'], c=color, s=20)
@@ -144,7 +159,7 @@ for i in range(len(best_cells_pos_bd_ar_60)):
         
     for cell_sd in range(len(current_pos_sd)):
         #color = [(center_rf_sd_ar_60[i][cell_sd][0]-45)/(360-45), (center_rf_sd_ar_60[i][cell_sd][0]-45)/(360-45), 1]
-        color = cmap_small((center_rf_sd_ar_60[i][cell_sd][0] - (-180)) / (180 - (-180)))
+        color = cmap_small((center_rf_sd_ar_60[i][cell_sd][0] - 45) / (360 - 45))
         if center_rf_sd_ar_60[i][cell_sd][0] == 0:
             #color = [(360-45)/(360-45), (360-45)/(360-45), 1]
             color = cmap_small(1.0)
@@ -163,9 +178,9 @@ cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_big), ax=ax, label='Big Dot Azim
 #cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
-tick_positions = np.linspace(0, 1, 9) 
+tick_positions = np.linspace(0, 1, 8) 
 # Normalized ticks from 0 to 1 (9 ticks) 
-tick_labels = np.arange(-180, 181, 45) 
+tick_labels = np.arange(0, 359, 45) 
 # Labels from 0 to 360 in steps of 45
 # Set ticks and labels 
 cbar.set_ticks(tick_positions) 
@@ -183,9 +198,9 @@ cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_small), ax=ax, label='Small Dot 
 #cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
-tick_positions = np.linspace(0, 1, 9) 
+tick_positions = np.linspace(0, 1, 8) 
 # Normalized ticks from 0 to 1 (9 ticks) 
-tick_labels = np.arange(-180, 181, 45) 
+tick_labels = np.arange(0, 359, 45) 
 # Labels from 0 to 360 in steps of 45
 # Set ticks and labels 
 cbar.set_ticks(tick_positions) 
@@ -233,13 +248,13 @@ for i in range(len(best_cells_pos_bd_ar_60)):
 
     for cell_bd in range(len(current_pos_bd)):
         #color = [1, (center_rf_bd_ar_60[i][cell_bd][1]-31)/(151-31) ,1]
-        color = cmap_big_elevation((center_rf_bd_ar_60[i][cell_bd][1]-(-61))/(61-(-61)))
+        color = cmap_big_elevation((center_rf_bd_ar_60[i][cell_bd][1]-43)/(139-43))
         sax_bd = ax.scatter(current_pos_bd.iloc[cell_bd]['y'], current_pos_bd.iloc[cell_bd]['x'], c=color, s=20)
 
         
     for cell_sd in range(len(current_pos_sd)):
         #color = [(center_rf_sd_ar_60[i][cell_sd][1]-43)/(139-43), 1 ,(center_rf_sd_ar_60[i][cell_sd][1]-43)/(139-43)]
-        color = cmap_small_elevation((center_rf_sd_ar_60[i][cell_sd][1]-(-61))/(61-(-61)))
+        color = cmap_small_elevation((center_rf_sd_ar_60[i][cell_sd][1]-43)/(139-43))
         sac_sd = ax.scatter(current_pos_sd.iloc[cell_sd]['y'], current_pos_sd.iloc[cell_sd]['x'], c=color, s=20)
         
 #create custom colorbars
@@ -307,7 +322,7 @@ plt.show()
 fig.savefig('anatomical_map_60_elev.svg')
 
 
-########################################################################################################STOP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+########################################################################################################
 #%% 40 um dorsal AC
 best_cells_pos_bd_ar_40 = []
 best_cells_pos_sd_ar_40 = []
@@ -328,7 +343,7 @@ for rec in dorsal_40_list:
     plot_name = str(rec.split('/')[-1])+ "_receptive_field"
         
     # create rf plots and return variables for anatomical maps
-    center_rf_cells_bd, cells_index_bd, center_rf_cells_sd, cells_index_sd = analysis_complete(rec, plot_name)
+    center_rf_cells_bd, cells_index_bd, center_rf_cells_sd, cells_index_sd = analysis_complete(rec, plot_name, rec_counter)
     
     # extract positions for relevant cells
     best_cells_pos_bd = all_cells_pos.iloc[cells_index_bd]
@@ -340,7 +355,7 @@ for rec in dorsal_40_list:
     center_rf_bd_ar_40.append(center_rf_cells_bd)
     center_rf_sd_ar_40.append(center_rf_cells_sd)
     
-#%%
+#%% PLOTS
 # Plot Azimuth
 fig = plt.figure(figsize = (20,10))
 ax = fig.add_subplot(111)
@@ -356,27 +371,27 @@ for i in range(len(best_cells_pos_bd_ar_40)):
     ##########
 
     for cell_bd in range(len(current_pos_bd)):
-        color = cmap_big_elevation((center_rf_bd_ar_40[i][cell_bd][1]-43)/(139-43))
+        color = [1, (center_rf_bd_ar_40[i][cell_bd][0]-45)/(360-45), (center_rf_bd_ar_40[i][cell_bd][0]-45)/(360-45)]
         if center_rf_bd_ar_40[i][cell_bd][0] == 0:
-            color = cmap_big(1)
+            color = [1, (360-45)/(360-45) , (360-45)/(360-45)]
         sax_bd = ax.scatter(current_pos_bd.iloc[cell_bd]['y'], current_pos_bd.iloc[cell_bd]['x'], c=color, s=20)
 
         
     for cell_sd in range(len(current_pos_sd)):
-        color = cmap_small_elevation((center_rf_sd_ar_40[i][cell_sd][1]-43)/(139-43))
+        color = [(center_rf_sd_ar_40[i][cell_sd][0]-45)/(360-45), (center_rf_sd_ar_40[i][cell_sd][0]-45)/(360-45), 1]
         if center_rf_bd_ar_40[i][cell_bd][0] == 0:
-            color = cmap_small(1)           
+            color = [(360-45)/(360-45), (360-45)/(360-45), 1]            
         sax_sd = ax.scatter(current_pos_sd.iloc[cell_sd]['y'], current_pos_sd.iloc[cell_sd]['x'], c=color, s=20)
         
         
 # Define the range of values
-#values = np.linspace(45, 360, 1024)  # Generate values between 45 and 360
-#normalized = (values - 45) / (360 - 45)  # Normalize values between 0 and 1
+values = np.linspace(45, 360, 1024)  # Generate values between 45 and 360
+normalized = (values - 45) / (360 - 45)  # Normalize values between 0 and 1
 # Create RGB colors based on [1, normalized, normalized]
-#colors = [[1, norm, norm] for norm in normalized]
+colors = [[1, norm, norm] for norm in normalized]
 # Create a colormap from the colors
-#cmap_bd = mcolors.ListedColormap(colors)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_big), ax=ax, label='Big Dot Azimuth [°]')
+cmap_bd = mcolors.ListedColormap(colors)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Big Dot Azimuth [°]')
 #cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
@@ -389,13 +404,13 @@ cbar.set_ticks(tick_positions)
 cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
 
 # Define the range of values
-# values = np.linspace(45, 360, 1024)  # Generate values between 45 and 360
-# normalized = (values - 45) / (360 - 45)  # Normalize values between 0 and 1
+values = np.linspace(45, 360, 1024)  # Generate values between 45 and 360
+normalized = (values - 45) / (360 - 45)  # Normalize values between 0 and 1
 # Create RGB colors based on [normalized, normalized, 1]
-# colors = [[norm, norm, 1] for norm in normalized]
+colors = [[norm, norm, 1] for norm in normalized]
 # Create a colormap from the colors
-# cmap_sd = mcolors.ListedColormap(colors)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_small), ax=ax, label='Small Dot Azimuth [°]')
+cmap_sd = mcolors.ListedColormap(colors)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Small Dot Azimuth [°]')
 #cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
@@ -443,23 +458,23 @@ for i in range(len(best_cells_pos_bd_ar_40)):
     #####
 
     for cell_bd in range(len(current_pos_bd)):
-        color = cmap_big_elevation((center_rf_bd_ar_40[i][cell_bd][1]-43)/(139-43))
+        color = [1, (center_rf_bd_ar_40[i][cell_bd][1]-31)/(151-31) ,1]
         sax_bd = ax.scatter(current_pos_bd.iloc[cell_bd]['y'], current_pos_bd.iloc[cell_bd]['x'], c=color, s=20)
 
         
     for cell_sd in range(len(current_pos_sd)):
-        color = cmap_big_elevation((center_rf_sd_ar_40[i][cell_sd][1]-43)/(139-43))
+        color = [(center_rf_sd_ar_40[i][cell_sd][1]-43)/(139-43), 1 ,(center_rf_sd_ar_40[i][cell_sd][1]-43)/(139-43)]
         sac_sd = ax.scatter(current_pos_sd.iloc[cell_sd]['y'], current_pos_sd.iloc[cell_sd]['x'], c=color, s=20)
         
 #create custom colorbars
 # Define the range of the green component
-#values = np.linspace(31, 151, 1024)  # Generate values between 31 and 151
-#greens = (values - 31) / (151 - 31)  # Normalize green component between 0 and 1
+values = np.linspace(31, 151, 1024)  # Generate values between 31 and 151
+greens = (values - 31) / (151 - 31)  # Normalize green component between 0 and 1
 # Create RGB colors based on [1, green, 1]
-#colors_bd = [[1, green, 1] for green in greens]
+colors_bd = [[1, green, 1] for green in greens]
 # Create a colormap from the colors
-#cmap_bd = mcolors.ListedColormap(colors_bd)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_big_elevation), ax=ax, label='Big Dot Elevation [°]')
+cmap_bd = mcolors.ListedColormap(colors_bd)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_bd), ax=ax, label='Big Dot Elevation [°]')
 #cbar.ax.yaxis.label.set_size(20)
 
 
@@ -474,13 +489,13 @@ cbar.set_ticks(tick_positions)
 cbar.set_ticklabels([f'{label}' for label in tick_labels]) # Add degree symbols
 
 # Define the range of values
-#values = np.linspace(43, 139, 1024)  # Generate values between 43 and 139
-#pinks = (values - 43) / (139 - 43)  # Normalize values between 0 and 1
+values = np.linspace(43, 139, 1024)  # Generate values between 43 and 139
+pinks = (values - 43) / (139 - 43)  # Normalize values between 0 and 1
 # Create RGB colors based on [normalized, 1, normalized]
-#colors_sd = [[norm, 1, norm] for norm in pinks]
+colors_sd = [[norm, 1, norm] for norm in pinks]
 # Create a colormap from the colors
-#cmap_sd = mcolors.ListedColormap(colors_sd)
-cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_small_elevation), ax=ax, label='Small Dot Elevation [°]')
+cmap_sd = mcolors.ListedColormap(colors_sd)
+cbar = fig.colorbar(cm.ScalarMappable(cmap=cmap_sd), ax=ax, label='Small Dot Elevation [°]')
 #cbar.ax.yaxis.label.set_size(20)
 
 # Define tick positions and labels 
@@ -536,7 +551,7 @@ for rec in ventral_20_list:
     plot_name = str(rec.split('/')[-1])+ "_receptive_field"
         
     # create rf plots and return variables for anatomical maps
-    center_rf_cells_bd, cells_index_bd, center_rf_cells_sd, cells_index_sd = analysis_complete(rec, plot_name)
+    center_rf_cells_bd, cells_index_bd, center_rf_cells_sd, cells_index_sd = analysis_complete(rec, dff_20_list[rec_counter-1], plot_name)
     
     # extract positions for relevant cells
     best_cells_pos_bd = all_cells_pos.iloc[cells_index_bd]
@@ -743,7 +758,7 @@ for rec in ventral_00_list:
     plot_name = str(rec.split('/')[-1])+ "_receptive_field"
         
     # create rf plots and return variables for anatomical maps
-    center_rf_cells_bd, cells_index_bd, center_rf_cells_sd, cells_index_sd = analysis_complete(rec, plot_name)
+    center_rf_cells_bd, cells_index_bd, center_rf_cells_sd, cells_index_sd = analysis_complete(rec, dff_00_list[rec_counter-1], plot_name)
     
     # extract positions for relevant cells
     best_cells_pos_bd = all_cells_pos.iloc[cells_index_bd]

@@ -11,7 +11,8 @@ import Toolbox_2p0 as tt
 import analyse_moving_dot_gp24 as tb
 import statistics
 
-def analysis_complete(data_path, plot_name):
+#%%
+def calculate_dff_trace(data_path, rec_counter):
     #%%
     # pre allocation
     cell_pos = []
@@ -58,6 +59,63 @@ def analysis_complete(data_path, plot_name):
     
     # calculate DFF with median in sliding window as F0
     dff = tt.calc_dff_wind(F=smooth_f, window=des_wind, frame_rate=frame_rate)
+    
+    # Save `dff` with a unique name
+    save_path = f"dff_{rec_counter}.npy"  # Generate a unique filename
+    np.save(save_path, dff)  # Save as .npy file
+    
+    
+def analysis_complete(data_path, plot_name, rec_counter):
+    #%%
+    # pre allocation
+    cell_pos = []
+    
+    # hardcoded stuff
+    frame_rate = 2.18  # in Hz
+    des_wind = 5    # window size for sliding window median (DFF), in min
+    tau = 1.6
+    
+    all_dot_sizes = np.array([[30, 5], [-15, -5]], dtype="int32")
+    all_windows = np.array([[-180, -90, 0, 90],
+                            [15, 45, 15, -15], [-15, 15, -15, -45]], dtype="int32")
+    win_buffer = [-1, 10]
+    conds_dotsizes = ["big", "small"]
+    conds_windows = ["left", "front", "right", "back"]
+    conds_elevations = [["1", "2", "3"], ["1", "2", "3", "4", "5", "6", "7"]]
+    
+    # define path: rn only one recording, later then more general
+    # in jupyter notebook: default working directory is location of this file (can be seen with "print(os.getcwd())"  )
+    # to access other working directories: os.chdir("")
+    # data_path for at home
+    #data_path = "E:\\GP_24\\05112024\\GP24_fish1_rec1_05112024\\"
+    
+    
+    # data_path for jupyter
+    # data_path = "/home/jovyan/data/fish_1_05112024/"
+    
+    # get vxpy stuff
+    display = tt.load_hdf5(data_path + "Display.hdf5", name="phase")
+    io = h5py.File(data_path + "Io.hdf5")
+    
+    # get suite2p stuff
+    F = np.load(data_path + "suite2p\\plane0\\F.npy")
+    ops = np.load(data_path + "suite2p\\plane0\\ops.npy", allow_pickle=True).item()
+    stat = np.load(data_path + "suite2p\\plane0\\stat.npy", allow_pickle=True)
+    # data for when run in jupyter lal
+    # F = np.load(data_path + "suite2p/F.npy")  # intensity trace for each detected cell
+    # ops = np.load(data_path + "suite2p/ops.npy", allow_pickle=True).item()
+    # stat = np.load(data_path + "suite2p/stat.npy", allow_pickle=True)
+    
+    #%% Calculate DFF
+    #smooth traces with average in sliding window
+    smooth_f = tt.avg_smooth(data=F, window=3)
+    
+    #calculate DFF with median in sliding window as F0
+    dff = tt.calc_dff_wind(F=smooth_f, window=des_wind, frame_rate=frame_rate)
+    
+    #Save `dff` with a unique name
+    save_path = f"dff_{rec_counter}.npy"  # Generate a unique filename
+    np.save(save_path, dff)  # Save as .npy file
     
     # %% Split Data into stimulus conditions
     # align frames between both PCs
@@ -200,62 +258,145 @@ def analysis_complete(data_path, plot_name):
         list_receptive_fields_smol.append(rf_matrix_total_avg_smol)
     for plot in range(np.shape(AUCs_all_cells)[0]):
         counter += 1
-        fig = plt.figure()
+        fig = plt.figure(figsize = (20,10))
         ax = fig.add_subplot(111)  # Add a single subplot to the figure
         tb.plot_rf(fig, ax, list_receptive_fields_biig[plot])
+        # Define tick positions and labels 
+        x_min, x_max = plt.gca().get_xlim()
+        x_tick_positions = np.linspace(x_min, x_max, 9)
+        # Normalized ticks from 0 to 1 (9 ticks) 
+        x_tick_labels = np.arange(-180, 181, 45) 
+        # Labels from 0 to 360 in steps of 45
+        # Set ticks and labels 
+        ax.set_xticks(x_tick_positions) 
+        ax.set_xticklabels(x_tick_labels) # Add degree symbols  
+        y_min, y_max = plt.gca().get_ylim()
+        y_tick_positions = np.linspace(y_min, y_max, 13)
+        y_tick_labels = np.arange(-90, 91, 15)
+        ax.set_yticks(y_tick_positions) 
+        ax.set_yticklabels(y_tick_labels) # Add degree symbols
         fig.savefig(f'rf_big_{plot_name}{counter}.svg')
         plt.close()
-        fig = plt.figure()
+        fig = plt.figure(figsize = (20,10))
         ax = fig.add_subplot(111)  # Add a single subplot to the figure
+        # Define tick positions and labels 
+        x_min, x_max = plt.gca().get_xlim()
+        x_tick_positions = np.linspace(x_min, x_max, 9)
+        # Normalized ticks from 0 to 1 (9 ticks) 
+        x_tick_labels = np.arange(-180, 181, 45) 
+        # Labels from 0 to 360 in steps of 45
+        # Set ticks and labels 
+        ax.set_xticks(x_tick_positions) 
+        ax.set_xticklabels(x_tick_labels) # Add degree symbols   
+        y_min, y_max = plt.gca().get_ylim()
+        y_tick_positions = np.linspace(y_min, y_max, 13)
+        y_tick_labels = np.arange(-90, 91, 15)
+        ax.set_yticks(y_tick_positions) 
+        ax.set_yticklabels(y_tick_labels) # Add degree symbols
         tb.plot_rf(fig, ax, list_receptive_fields_smol[plot])
         fig.savefig(f'rf_small_{plot_name}{counter}.svg')
         plt.close()
-
-        
+    
+    #%%
+    rf_matrix_mean_small = np.mean(np.dstack(list_receptive_fields_smol), axis = 2)
+    fig = plt.figure(figsize = (20,10))
+    ax = fig.add_subplot(111)  # Add a single subplot to the figure
+    tb.plot_rf(fig, ax, rf_matrix_mean_small)
+    # Define tick positions and labels 
+    x_min, x_max = plt.gca().get_xlim()
+    x_tick_positions = np.linspace(x_min, x_max, 9)
+    # Normalized ticks from 0 to 1 (9 ticks) 
+    x_tick_labels = np.arange(-180, 181, 45) 
+    # Labels from 0 to 360 in steps of 45
+    # Set ticks and labels 
+    ax.set_xticks(x_tick_positions) 
+    ax.set_xticklabels(x_tick_labels) # Add degree symbols  
+    y_min, y_max = plt.gca().get_ylim()
+    y_tick_positions = np.linspace(y_min, y_max, 13)
+    y_tick_labels = np.arange(-90, 91, 15)
+    ax.set_yticks(y_tick_positions) 
+    ax.set_yticklabels(y_tick_labels) # Add degree symbols
+    fig.savefig(f'average_rf_small_layer{plot_name}.svg')
+    plt.close()
+    
+    rf_matrix_mean_big = np.mean(np.dstack(list_receptive_fields_biig), axis = 2)
+    fig = plt.figure(figsize = (20,10))
+    ax = fig.add_subplot(111)  # Add a single subplot to the figure
+    tb.plot_rf(fig, ax, rf_matrix_mean_big)
+    # Define tick positions and labels 
+    x_min, x_max = plt.gca().get_xlim()
+    x_tick_positions = np.linspace(x_min, x_max, 9)
+    # Normalized ticks from 0 to 1 (9 ticks) 
+    x_tick_labels = np.arange(-180, 181, 45) 
+    # Labels from 0 to 360 in steps of 45
+    # Set ticks and labels 
+    ax.set_xticks(x_tick_positions) 
+    ax.set_xticklabels(x_tick_labels) # Add degree symbols
+    y_min, y_max = plt.gca().get_ylim()
+    y_tick_positions = np.linspace(y_min, y_max, 13)
+    y_tick_labels = np.arange(-90, 91, 15)
+    ax.set_yticks(y_tick_positions) 
+    ax.set_yticklabels(y_tick_labels) # Add degree symbols
+    fig.savefig(f'average_rf_big_layer{plot_name}.svg')
+    plt.close()
+    
+    
+    #%%
+    mean_all_cells = tb.mean_dff_value_phase(mean_dff_bcs, new_inds, num_stim)
+    pref_stims_cells = []
+    for cell in range(np.shape(mean_all_cells)[0]):
+        #max_cell = np.max(mean_all_cells[cell])
+        max_ind = np.argmax(mean_all_cells[cell])
+        pref_dot_size = stims_list[max_ind][0]
+        pref_stims_cells.append(pref_dot_size)
+    
     #%%
     cells_index_big_dot = []
     cells_index_small_dot = []
-    azimuths = np.arange(0,361, 45)
+    azimuths = np.arange(-180,181, 1)
+    azimuths_tunings = np.arange(-180, 181, 45)
+    elevations = np.arange(-90, 91, 1)
     center_rf_cells_bd = []
     center_rf_cells_sd = []
     for cell in range(np.shape(list_receptive_fields_biig)[0]):
-        max_bd = np.max(list_receptive_fields_biig[cell])
-        max_sd = np.max(list_receptive_fields_smol[cell])    
-        if max_bd > max_sd:
+        # max_bd = np.max(list_receptive_fields_biig[cell])
+        # max_sd = np.max(list_receptive_fields_smol[cell])    
+        if pref_stims_cells[cell] == 30:
             threshold_cell = np.mean(list_receptive_fields_biig[cell]) + 2*np.std(list_receptive_fields_biig[cell])
-            azims = np.where(list_receptive_fields_biig[cell] > threshold_cell)[1]
+            azims = azimuths[np.where(list_receptive_fields_biig[cell] > threshold_cell)[1]]
+            
             # Compute distances for each target
-            distances = np.abs(azimuths[:, None] - azims)  # Shape: (len(azimuths), len(azims))   
+            distances = np.abs(azimuths_tunings[:, None] - azims)  # Shape: (len(azimuths), len(azims))   
             # Find the index of the minimum distance for each target
             closest_indices = np.argmin(distances, axis=0)       
             # Get the closest azimuths
-            closest_azimuths = azimuths[closest_indices]
+            closest_azimuths = azimuths_tunings[closest_indices]
             #get the azimuth at which the most closest azimuths lay as best azimuth of the cell
             if len(closest_azimuths) != 0:
                 best_azim = statistics.mode(closest_azimuths)
             else:
                 continue
             #get the elevation and an alternative azimuth value using only the information contained in the max
-            best_elev = np.unravel_index(np.argmax(list_receptive_fields_biig[cell]), np.shape(list_receptive_fields_biig[cell]))[0]
+            best_elev = elevations[np.unravel_index(np.argmax(list_receptive_fields_biig[cell]), np.shape(list_receptive_fields_biig[cell]))[0]]
             center_rf_cells_bd.append([best_azim, best_elev])
             #get the ROI index of suite2p
             cells_index_big_dot.append(best_cells[cell].astype(int))
         else:
             threshold_cell = np.mean(list_receptive_fields_smol[cell]) + 2*np.std(list_receptive_fields_smol[cell])
-            azims = np.where(list_receptive_fields_smol[cell] > threshold_cell)[1]
+            azims = azimuths[np.where(list_receptive_fields_smol[cell] > threshold_cell)[1]]
             # Compute distances for each target
-            distances = np.abs(azimuths[:, None] - azims)  # Shape: (len(azimuths), len(azims))   
+            distances = np.abs(azimuths_tunings[:, None] - azims)  # Shape: (len(azimuths), len(azims))   
             # Find the index of the minimum distance for each target
             closest_indices = np.argmin(distances, axis=0)       
             # Get the closest azimuths
-            closest_azimuths = azimuths[closest_indices]
+            closest_azimuths = azimuths_tunings[closest_indices]
             #get the azimuth at which the most closest azimuths lay as best azimuth of the cell
             if len(closest_azimuths) != 0:
                 best_azim = statistics.mode(closest_azimuths)
             else:
                 continue
             #get the elevation and an alternative azimuth value using only the information contained in the max
-            best_elev = np.unravel_index(np.argmax(list_receptive_fields_smol[cell]), np.shape(list_receptive_fields_smol[cell]))[0]
+            best_elev = elevations[np.unravel_index(np.argmax(list_receptive_fields_smol[cell]), np.shape(list_receptive_fields_smol[cell]))[0]]
             center_rf_cells_sd.append([best_azim, best_elev])
             #get the ROI index of suite2p
             cells_index_small_dot.append(best_cells[cell].astype(int))
