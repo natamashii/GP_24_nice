@@ -325,7 +325,7 @@ for rec in dorsal_40_list:
     all_cells_pos = pd.read_csv(f'{rec}/cell_positions_transformed.csv')
 
     # define plot name dynamically
-    plot_name = str(rec.split('/')[-1])+ "_receptive_field"
+    plot_name = rec.split('/')[-1]+ "_receptive_field"
         
     # create rf plots and return variables for anatomical maps
     center_rf_cells_bd, cells_index_bd, center_rf_cells_sd, cells_index_sd = analysis_complete(rec, plot_name)
@@ -356,16 +356,17 @@ for i in range(len(best_cells_pos_bd_ar_40)):
     ##########
 
     for cell_bd in range(len(current_pos_bd)):
-        color = cmap_big_elevation((center_rf_bd_ar_40[i][cell_bd][1]-43)/(139-43))
+        color = cmap_big((center_rf_bd_ar_40[i][cell_bd][0] - (-180)) / (180 - (-180)))
         if center_rf_bd_ar_40[i][cell_bd][0] == 0:
-            color = cmap_big(1)
+            color = cmap_big(1.0)
         sax_bd = ax.scatter(current_pos_bd.iloc[cell_bd]['y'], current_pos_bd.iloc[cell_bd]['x'], c=color, s=20)
 
         
     for cell_sd in range(len(current_pos_sd)):
-        color = cmap_small_elevation((center_rf_sd_ar_40[i][cell_sd][1]-43)/(139-43))
-        if center_rf_bd_ar_40[i][cell_bd][0] == 0:
-            color = cmap_small(1)           
+        color = cmap_small((center_rf_sd_ar_40[i][cell_sd][0] - (-180)) / (180 - (-180)))
+        if center_rf_sd_ar_60[i][cell_sd][0] == 0:
+            #color = [(360-45)/(360-45), (360-45)/(360-45), 1]
+            color = cmap_small(1.0)
         sax_sd = ax.scatter(current_pos_sd.iloc[cell_sd]['y'], current_pos_sd.iloc[cell_sd]['x'], c=color, s=20)
         
         
@@ -443,12 +444,12 @@ for i in range(len(best_cells_pos_bd_ar_40)):
     #####
 
     for cell_bd in range(len(current_pos_bd)):
-        color = cmap_big_elevation((center_rf_bd_ar_40[i][cell_bd][1]-43)/(139-43))
+        color = cmap_big_elevation((center_rf_bd_ar_40[i][cell_bd][1]-(-61))/(61-(-61)))
         sax_bd = ax.scatter(current_pos_bd.iloc[cell_bd]['y'], current_pos_bd.iloc[cell_bd]['x'], c=color, s=20)
 
         
     for cell_sd in range(len(current_pos_sd)):
-        color = cmap_big_elevation((center_rf_sd_ar_40[i][cell_sd][1]-43)/(139-43))
+        color = cmap_small_elevation((center_rf_sd_ar_40[i][cell_sd][1]-(-61))/(61-(-61)))
         sac_sd = ax.scatter(current_pos_sd.iloc[cell_sd]['y'], current_pos_sd.iloc[cell_sd]['x'], c=color, s=20)
         
 #create custom colorbars
@@ -562,16 +563,17 @@ for i in range(len(best_cells_pos_bd_ar_20)):
     ##########
 
     for cell_bd in range(len(current_pos_bd)):
-        color = [1, (center_rf_bd_ar_20[i][cell_bd][0]-45)/(360-45), (center_rf_bd_ar_20[i][cell_bd][0]-45)/(360-45)]
+        color = cmap_big((center_rf_bd_ar_20[i][cell_bd][0] - (-180)) / (180 - (-180)))
         if center_rf_bd_ar_20[i][cell_bd][0] == 0:
-            color = [1, (360-45)/(360-45) , (360-45)/(360-45)]
+            color = cmap_big(1.0)
         sax_bd = ax.scatter(current_pos_bd.iloc[cell_bd]['y'], current_pos_bd.iloc[cell_bd]['x'], c=color, s=20)
 
         
     for cell_sd in range(len(current_pos_sd)):
-        color = [(center_rf_sd_ar_20[i][cell_sd][0]-45)/(360-45), (center_rf_sd_ar_20[i][cell_sd][0]-45)/(360-45), 1]
-        if center_rf_bd_ar_20[i][cell_bd][0] == 0:
-            color = [(360-45)/(360-45), (360-45)/(360-45), 1]            
+        color = cmap_small((center_rf_sd_ar_20[i][cell_sd][0] - (-180)) / (180 - (-180)))
+        if center_rf_sd_ar_20[i][cell_sd][0] == 0:
+            #color = [(360-45)/(360-45), (360-45)/(360-45), 1]
+            color = cmap_small(1.0)
         sax_sd = ax.scatter(current_pos_sd.iloc[cell_sd]['y'], current_pos_sd.iloc[cell_sd]['x'], c=color, s=20)
         
         
@@ -650,12 +652,12 @@ for i in range(len(best_cells_pos_bd_ar_20)):
     #####
 
     for cell_bd in range(len(current_pos_bd)):
-        color = [1, (center_rf_bd_ar_20[i][cell_bd][1]-31)/(151-31) ,1]
+        color = cmap_big_elevation((center_rf_bd_ar_20[i][cell_bd][1]-(-61))/(61-(-61)))
         sax_bd = ax.scatter(current_pos_bd.iloc[cell_bd]['y'], current_pos_bd.iloc[cell_bd]['x'], c=color, s=20)
 
         
     for cell_sd in range(len(current_pos_sd)):
-        color = [(center_rf_sd_ar_20[i][cell_sd][1]-43)/(139-43), 1 ,(center_rf_sd_ar_20[i][cell_sd][1]-43)/(139-43)]
+        color = cmap_small_elevation((center_rf_sd_ar_20[i][cell_sd][1]-(-61))/(61-(-61)))
         sac_sd = ax.scatter(current_pos_sd.iloc[cell_sd]['y'], current_pos_sd.iloc[cell_sd]['x'], c=color, s=20)
         
 #create custom colorbars
@@ -769,16 +771,17 @@ for i in range(len(best_cells_pos_bd_ar)):
     ##########
 
     for cell_bd in range(len(current_pos_bd)):
-        color = [1, (center_rf_bd_ar[i][cell_bd][0]-45)/(360-45), (center_rf_bd_ar[i][cell_bd][0]-45)/(360-45)]
+        color = cmap_big((center_rf_bd_ar[i][cell_bd][0] - (-180)) / (180 - (-180)))
         if center_rf_bd_ar[i][cell_bd][0] == 0:
-            color = [1, (360-45)/(360-45) , (360-45)/(360-45)]
+            color = cmap_big(1.0)
         sax_bd = ax.scatter(current_pos_bd.iloc[cell_bd]['y'], current_pos_bd.iloc[cell_bd]['x'], c=color, s=20)
 
         
     for cell_sd in range(len(current_pos_sd)):
-        color = [(center_rf_sd_ar[i][cell_sd][0]-45)/(360-45), (center_rf_sd_ar[i][cell_sd][0]-45)/(360-45), 1]
-        if center_rf_bd_ar[i][cell_bd][0] == 0:
-            color = [(360-45)/(360-45), (360-45)/(360-45), 1]            
+        color = cmap_small((center_rf_sd_ar[i][cell_sd][0] - (-180)) / (180 - (-180)))
+        if center_rf_sd_ar[i][cell_sd][0] == 0:
+            #color = [(360-45)/(360-45), (360-45)/(360-45), 1]
+            color = cmap_small(1.0)
         sax_sd = ax.scatter(current_pos_sd.iloc[cell_sd]['y'], current_pos_sd.iloc[cell_sd]['x'], c=color, s=20)
         
         
@@ -857,12 +860,12 @@ for i in range(len(best_cells_pos_bd_ar)):
     #####
 
     for cell_bd in range(len(current_pos_bd)):
-        color = [1, (center_rf_bd_ar[i][cell_bd][1]-31)/(151-31) ,1]
+        color = cmap_big_elevation((center_rf_bd_ar[i][cell_bd][1]-(-61))/(61-(-61)))
         sax_bd = ax.scatter(current_pos_bd.iloc[cell_bd]['y'], current_pos_bd.iloc[cell_bd]['x'], c=color, s=20)
 
         
     for cell_sd in range(len(current_pos_sd)):
-        color = [(center_rf_sd_ar[i][cell_sd][1]-43)/(139-43), 1 ,(center_rf_sd_ar[i][cell_sd][1]-43)/(139-43)]
+        color = cmap_small_elevation((center_rf_sd_ar[i][cell_sd][1]-(-61))/(61-(-61)))
         sac_sd = ax.scatter(current_pos_sd.iloc[cell_sd]['y'], current_pos_sd.iloc[cell_sd]['x'], c=color, s=20)
         
 #create custom colorbars
