@@ -246,16 +246,16 @@ for layer in range(layers):
 heights = [10, 20, 15, 10]
 widths = [40, 20, 30, 40]
 fig_sizes = [[30, 30],
-             [25, 39],
-             [29, 34],
+             [33, 48],
+             [37, 47],
              [30, 30]]
 sizes = [220, 220, 220, 220]
 tick_sizes = [170, 170, 170, 170]
-lgd_distance = [4.5, 2.5, 3.5, 3.5]
-cax_factor = [.75, .1, .22, .4]
-cax_height = [.78, .965, .925, .87]
-cax_x = [-0.064, -0.05, -0.04, -0.045]
-cax_y2 = [-.05, -.1, -.1, -.07]
+lgd_distance = [4.5, 3.5, 3.5, 5.5]
+cax_factor = [.75, .15, .27, .55]
+cax_height = [.78, .965, .925, .82]
+cax_x = [-0.064, -0.05, -0.05, -0.049]
+cax_y2 = [-.05, -.1, -.1, -.06]
 hspace = [.0, .001, .01, .0]
 cax_width = [.01, .015, .015, .01]
 y2_dist = [10, 10, 10, 10]
@@ -432,8 +432,8 @@ for layer in range(layers):
                             ax.get_position().height * .1])
         cbar = plt.colorbar(cc, cax=cax, ticks=[0, 1])
         cbar.ax.set_yticklabels(["0", "30"])
-        cbar.set_label("Elevation rel. to \n stimulus window [°]",
-                       labelpad=labelpad*18, weight="bold", size=tick_sizes[layer], rotation=0, loc="top")
+        cbar.set_label("\n Elevation rel. to \n stimulus window [°]",
+                       labelpad=labelpad*16, weight="bold", size=tick_sizes[layer], rotation=0, loc="top")
 
         regressor_plot.set_xlabel("Time [s]")
         regressor_plot.set_xticks(ticks=trace_ticks[:], labels=trace_labels[:])
