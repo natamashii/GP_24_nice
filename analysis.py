@@ -171,7 +171,7 @@ all_dff = [[] for layer in range(layers)]
 all_all_regressors_conv = [[] for layer in range(layers)]
 
 # hardcoded toggle variables to not having to scroll all way up ._.
-sort_mechanism = 0
+sort_mechanism = 1
 sort_as_string = ["max_sort", "corr_sort"]
 to_save = True
 
@@ -252,11 +252,11 @@ fig_sizes = [[30, 30],
 sizes = [220, 220, 220, 220]
 tick_sizes = [170, 170, 170, 170]
 lgd_distance = [4.5, 3.5, 3.5, 5.5]
-cax_factor = [.75, .15, .27, .55]
-cax_height = [.78, .965, .925, .82]
-cax_x = [-0.064, -0.05, -0.05, -0.049]
+cax_factor = [.75, .01, .12, .56]
+cax_height = [.78, 1, .96, .82]
+cax_x = [-0.064, -0.01, -0.01, -0.049]
 cax_y2 = [-.05, -.1, -.1, -.06]
-hspace = [.0, .001, .01, .0]
+hspace = [.0, .1, .05, .0]
 cax_width = [.01, .015, .015, .01]
 y2_dist = [10, 10, 10, 10]
 
@@ -459,7 +459,7 @@ for layer in range(layers):
             plt.savefig(f"E:\\GP_Ari\\figures\\"
                         f"pixelplot_fish_level_{layer}_{sort_as_string[sort_mechanism]}.png", format="png")
 
-# %% Trace Plots
+# %% Trace Plots: good
 np.random.seed(0)
 random_day = np.random.randint(0, len(rec_folders)+1)
 recording_day = sorted_recordings_folder[random_day]
@@ -472,8 +472,192 @@ data = data[f"fish_1_rec{random_rec}"]
 dff = data["dff"]
 t_min = data["t_min"]
 all_regressors_conv = data["all_regressors_conv"]
+sorted_cells_idx = data["sorted_cells_idx"]
+best_cells = data["best_cells"]
+
 time_ax = np.linspace(0, (np.shape(dff)[1] - t_min) / frame_rate, np.shape(dff)[1] - t_min, endpoint=True).astype(
     "int64")
+plot_indices = np.arange(t_min, np.shape(dff)[1], 1)
+
+# select random cells
+size = 10
+np.random.seed(2)
+random_cells_idx = np.random.randint(0, np.shape(best_cells)[0], size=size)
+random_cells = dff[best_cells[random_cells_idx], plot_indices]
+random_cells_sorted_idx = [np.where(sorted_cells_idx == i) for i in random_cells_idx]
+corresp_regressors = [all_regressors_conv[random_cells_sorted_idx[i], plot_indices] for i in random_cells_sorted_idx]
+
+amount_plots = size
+figheight = 30
+figwidth = 20
+linewidth = 4
+
+with ((plt.rc_context({"font.size": size, "axes.titlesize": size, "axes.labelsize": size, "ytick.labelsize": size,
+                       "xtick.labelsize": size, "legend.fontsize": size, "figure.titlesize": size,
+                       "figure.labelsize": size, "axes.labelweight": "bold",
+                       "font.family": "sans-serif", "font.sans-serif": "Arial"}))):
+    fig, axs = plt.subplots(amount_plots, 1, constrained_layout=False, sharex=True, sharey=True)
+    fig.set_figheight(figheight)
+    fig.set_figwidth(figwidth)
+    # iterate over subplots
+    for subplt in range(amount_plots):
+        ax = axs[subplt]
+        # plot regressor trace
+        reg = ax.plot(time_ax, corresp_regressors[subplt], color="tab:pink",
+                      linewidth=linewidth, label="Regressor")
+        # plot dff trace
+        trace = ax.plot(time_ax, random_cells[subplt], color="tab:blue", linewidth=linewidth,
+                        label="dFF", alpha=1)
+        ax.spines[["top", "right"]].set_visible(False)
+    ax.set_xlabel("Time [s]", labelpad=20, weight="bold")
+    plt.figlegend(["Regressor", "dFF"], frameon=False, prop={"weight": "bold"})
+    fig.supylabel("dFF", weight="bold")
+
+    plt.savefig(f"E:\\GP_Ari\\figures\\"
+                f"good_cell_trace.svg", format="svg")
+    plt.savefig(f"E:\\GP_Ari\\figures\\"
+                f"good_cell_trace.pdf", format="pdf")
+    plt.savefig(f"E:\\GP_Ari\\figures\\"
+                f"good_cell_trace.png", format="png")
+
+plt.close()
+
+# Trace Plot: not good
+# identify bad cell indices
+all_cells = np.arange(0, np.shape(dff)[0], 1).astype("int64")
+bad_cells = all_cells[all_cells != best_cells]
+
+
+# select random cells
+size = 10
+np.random.seed(2)
+random_cells_idx_b = np.random.randint(0, np.shape(bad_cells)[0], size=size)
+random_cells = dff[bad_cells[random_cells_idx_b], plot_indices]
+
+amount_plots = size
+figheight = 30
+figwidth = 20
+linewidth = 4
+
+with ((plt.rc_context({"font.size": size, "axes.titlesize": size, "axes.labelsize": size, "ytick.labelsize": size,
+                       "xtick.labelsize": size, "legend.fontsize": size, "figure.titlesize": size,
+                       "figure.labelsize": size, "axes.labelweight": "bold",
+                       "font.family": "sans-serif", "font.sans-serif": "Arial"}))):
+    fig, axs = plt.subplots(amount_plots, 1, constrained_layout=False, sharex=True, sharey=True)
+    fig.set_figheight(figheight)
+    fig.set_figwidth(figwidth)
+    # iterate over subplots
+    for subplt in range(amount_plots):
+        ax = axs[subplt]
+        # plot regressor trace
+        reg = ax.plot(time_ax, corresp_regressors[subplt], color="tab:pink",
+                      linewidth=linewidth, label="Regressor")
+        # plot dff trace
+        trace = ax.plot(time_ax, random_cells[subplt], color="tab:blue", linewidth=linewidth,
+                        label="dFF", alpha=1)
+        ax.spines[["top", "right"]].set_visible(False)
+    ax.set_xlabel("Time [s]", labelpad=20, weight="bold")
+    plt.figlegend(["Regressor", "dFF"], frameon=False, prop={"weight": "bold"})
+    fig.supylabel("dFF", weight="bold")
+
+    plt.savefig(f"E:\\GP_Ari\\figures\\"
+                f"bad_cell_trace.svg", format="svg")
+    plt.savefig(f"E:\\GP_Ari\\figures\\"
+                f"bad_cell_trace.pdf", format="pdf")
+    plt.savefig(f"E:\\GP_Ari\\figures\\"
+                f"bad_cell_trace.png", format="png")
+
+# %% distribution plot
+# load data
+all_chosen_cells = [[] for layer in range(layers)]
+all_best_cells = [[] for layer in range(layers)]
+all_indices = [[] for layer in range(layers)]
+all_t_min = [[] for layer in range(layers)]
+all_dff = [[] for layer in range(layers)]
+all_all_regressors_conv = [[] for layer in range(layers)]
+
+# hardcoded toggle variables to not having to scroll all way up ._.
+sort_mechanism = 0
+sort_as_string = ["max_sort", "corr_sort"]
+to_save = True
+
+# iterate over all recordings: sorted in list (fish layer) of lists (corr recording)
+for day in range(len(sorted_recordings_folder)):
+    recording_day = sorted_recordings_folder[day]
+    for rec in range(len(recording_day)):
+        data = tt.load_hdf5(import_path=save_path + f"rec_folders_{rec_folders[day]}\\"
+                                                    f"fish_1_rec_{rec}_{sort_as_string[sort_mechanism]}.HDF5",
+                            name=f"fish_1_rec{rec}")
+        data = data[f"fish_1_rec{rec}"]
+        all_all_regressors_conv[rec].append(data["all_regressors_conv"])
+        all_best_cells[rec].append(data["best_cells"])
+        all_chosen_cells[rec].append(data["chosen_cells"])
+        all_dff[rec].append(data["dff"])
+        all_indices[rec].append(data["indices"])
+        all_t_min[rec].append(data["t_min"])
+
+# Preparation for Pixelplot
+# pre allocation
+layer_specifics = {"cells": [],
+                   "conditions": [],
+                   "time_sorted_cells": [],
+                   "line_counter": [],
+                   "sorted_cells_idx": [],
+                   "extracted_regressors": []}
+
+# stack all cells from same fish layer to one array
+for layer in range(layers):
+    # get amount of cells
+    sizes = max([np.shape(i)[1] for i in all_chosen_cells[layer]])
+    layer_sizes.append(sizes)
+    cells = []
+    cell_counter = 0
+    # iterate over each recording performed for current fish layer
+    for r in range(len(all_chosen_cells[layer])):
+        rec_cells = all_chosen_cells[layer][r]
+        # pad rec_cells with zeros
+        placeholder = np.zeros((np.shape(rec_cells)[0], sizes))
+        placeholder[0:np.shape(rec_cells)[0], 0:np.shape(rec_cells)[1]] = rec_cells
+        cells.append(placeholder)
+    cells = np.vstack(cells)
+    layer_cells.append(cells)
+
+    # sort cells for entire fish layer
+    cell_sorting, time_sorting, conditions = tt.get_sort_cells_max(indices=all_indices[layer][0], chosen_cells=cells,
+                                                                    num_conds=40, conds_dotsizes=conds_dotsizes,
+                                                                    conds_windows=conds_windows,
+                                                                    conds_elevations=conds_elevations)
+    # sort cells from top to bottom
+    sorted_cells, sorted_cells_idx = tt.sort_cells(sorting=cell_sorting, num_conds=40, chosen_cells=cells)
+
+    # sort time dimension of cells to stimulus conditions
+    time_sorted_cells, line_counter = tt.sort_times(sorted_cells=sorted_cells, time_sorting=time_sorting)
+
+    # extract regressor
+    extracted_regressors = tt.extract_reg(time_sorting=time_sorting, time_sorted_cells=time_sorted_cells,
+                                          all_regressors_conv=all_all_regressors_conv[layer][0], regbuffer=0)
+    the_one_regressor = extracted_regressors
+
+    # store necessary stuff in dictionary
+    layer_specifics["cells"].append(cells)
+    layer_specifics["conditions"].append(conditions)
+    layer_specifics["time_sorted_cells"].append(time_sorted_cells)
+    layer_specifics["line_counter"].append(line_counter)
+    layer_specifics["sorted_cells_idx"].append(sorted_cells_idx)
+    layer_specifics["extracted_regressors"].append(extracted_regressors)
+
+# connected dot plot
+# define colours for each layer
+colours = ["tab:pink", "tab:green", "purple", "red"]
+
+# iterate over layers
+for layer in range(layers):
+    # get amount of cells for each window & dot size
+    cell_interval = np.zeros((np.shape(layer_specifics["sorted_cells_idx"][layer])[0] + 1), dtype="int64")
+    amount_cells = int(np.shape(layer_specifics["time_sorted_cells"][layer])[0])
+    for i in range(np.shape(layer_specifics["sorted_cells_idx"][layer])[0]):
+        cell_interval[i] = amount_cells
+        amount_cells -= np.sum(~np.isnan(layer_specifics["sorted_cells_idx"][layer][i, :]))
 
 #%% DEBUG ZONE
 
