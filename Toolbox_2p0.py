@@ -7,6 +7,7 @@ import pandas as pd
 import math
 from colorama import Fore
 import h5py
+
 # import seaborn as sns
 # import skimage
 # import statsmodels
@@ -188,13 +189,11 @@ def get_sort_cells(indices, chosen_cells, num_conds, conds_dotsizes, conds_windo
     return cell_sorting, time_sorting, conditions
 
 # function to sort cells in their best response to stimuli
-def sort_cells(sorting, num_conds, chosen_cells, indices):
+def sort_cells(sorting, num_conds, chosen_cells):
     # pre allocation
     sorted_cells = list([] * num_conds)
     amount_cells = np.zeros((num_conds))
-    idx_cells = list([] * num_conds)
-
-    t_min, t_max = t_min_max(indices=indices)
+    sorted_cells_idx = list([] * num_conds)
 
     # iterate over all possible conditions of the stimulus
     for cond in range(num_conds):
@@ -202,35 +201,41 @@ def sort_cells(sorting, num_conds, chosen_cells, indices):
         amount_cells[cond] = np.shape(np.where(sorting == cond))[1]
         # get indices in sorting of cells sorted to this condition
         ind_cells = np.where(sorting == cond)[0].astype("int64")
-        idx_cells.append(ind_cells)
+        sorted_cells_idx.append(ind_cells)
         # only continue if there are cells sorted to this condition
         if amount_cells[cond] > 0:
             # iterate over relevant cells
             for cell_idx in ind_cells:
-                get_cell = chosen_cells[cell_idx, t_min:t_max]
+                get_cell = chosen_cells[cell_idx, :]
                 sorted_cells.append(get_cell)
     sorted_cells = np.array(sorted_cells)
-    return sorted_cells
+    return sorted_cells, sorted_cells_idx
 
 # function to sort time dimension into stimuli
-def sort_times(sorted_cells, time_sorting, t_min):
+def sort_times(sorted_cells, time_sorting):
     # pre allocation
     time_sorted_cells = np.zeros((np.shape(sorted_cells)[0], 1))
     time_counter = 0
+    line_counter = np.zeros(np.shape(time_sorting)[0]).astype("int64")
     # iterate over conditions
     for cond in range(np.shape(time_sorting)[0]):
         # iterate over repetitions of this condition
         for rep in range(np.shape(time_sorting)[2]):
-            start = int(time_sorting[cond, 0, rep] - t_min)
-            end = int(time_sorting[cond, 1, rep] - t_min)
+            start = int(time_sorting[cond, 0, rep])
+            end = int(time_sorting[cond, 1, rep])
             # get amount of frames for this repetition
             interval = end - start
             # append to pre allocated array
             time_sorted_cells = np.concatenate((time_sorted_cells, sorted_cells[:, start:end]), axis=1)
             time_counter += interval
+        line_counter[cond] = time_counter
     # exclude first col (placeholder col)
     time_sorted_cells = time_sorted_cells[:, 1:]
-    return time_sorted_cells
+    return time_sorted_cells, line_counter
+
+# function to convert time point into calcium frame indices
+def convert_time_frame(frame_times, time_point_variable):
+    return min(enumerate(frame_times), key=lambda x: abs(x[1] - time_point_variable))[0]
 
 # function to get t_min & t_max of Dot Stimulus Interval
 def t_min_max(indices):
@@ -315,13 +320,14 @@ def calc_dff_zscore(F):
         progress_counter = progress_counter + 1
     return dff
 
-def get_mean_dff_trace(chosen_cells, indices,):
+def get_mean_dff_trace(chosen_cells, indices):
     print("Compute average dFF curve over all 3 repetitions")
     # pre allocation
     best_cells_avg = []
     # iterate over cells
-    indices_mean_dff = np.full((len(indices), len(indices[0]), len(indices[0,0]), 2), np.nan)
+    indices_mean_dff = np.full((len(indices), len(indices[0]), len(indices[0, 0]), 2), np.nan)
     counter = 0
+    # iterate over all cells
     for cell in range(np.shape(chosen_cells)[0]):
         # iterate over dot sizes
         avg_dff_cell = []
@@ -340,10 +346,11 @@ def get_mean_dff_trace(chosen_cells, indices,):
                         rep3 = chosen_cells[cell, int(indices[d, window, elevation, 2, 0]):
                                          int(indices[d, window, elevation, 2, 2])]
                         rep_matrix = np.full((3, max([len(rep1), len(rep2), len(rep3)])), np.nan)
-                        rep_matrix[0, 0 : len(rep1)] = rep1
-                        rep_matrix[1, 0 : len(rep2)] = rep2
-                        rep_matrix[2, 0 : len(rep3)] = rep3
-                        avg_dff = np.nanmean(rep_matrix, axis = 0)
+                        rep_matrix[0, 0:len(rep1)] = rep1
+                        rep_matrix[1, 0:len(rep2)] = rep2
+                        rep_matrix[2, 0:len(rep3)] = rep3
+                        # calc average across all repetitions
+                        avg_dff = np.nanmean(rep_matrix, axis=0)
                         #get new start-indices
                         indices_mean_dff[d, window, elevation, 0] = len(avg_dff_cell)
                         #extend average dff values
@@ -351,11 +358,44 @@ def get_mean_dff_trace(chosen_cells, indices,):
                         #get new end-indices
                         indices_mean_dff[d, window, elevation, 1] = len(avg_dff_cell)
         best_cells_avg.append(avg_dff_cell)
-    counter /= np.shape(chosen_cells)[0]
-    mean_dff_best_cells = np.zeros((len(best_cells_avg), len(best_cells_avg[0])))
-    for cell in range(np.shape(mean_dff_best_cells)[0]):
-        mean_dff_best_cells[cell, :] = best_cells_avg[cell]
+    mean_dff_best_cells = np.array(best_cells_avg)
     return mean_dff_best_cells, indices_mean_dff
+
+# function to get average dff of all repetitions for each condition & cell
+def mean_dff(chosen_cells, indices):
+    print("Get Mean DFF for each cell & condition")
+    # pre allocation
+    mean_best_cells = []
+    mean_best_cells_ind = np.full((np.shape(indices)[0], np.shape(indices)[1], np.shape(indices)[2], 2), np.nan)
+    save_idx = True
+
+    # iterate over all cells
+    for cell, trace in enumerate(chosen_cells):
+        cell_mean = []
+        # iterate over dot sizes
+        for ds in range(np.shape(indices)[0]):
+            # iterate over windows
+            for wind in range(np.shape(indices)[1]):
+                # iterate over elevations
+                for el in range(np.shape(indices)[2]):
+                    if not np.isnan(indices[ds, wind, el]).any():
+                        # iterate over repetitions
+                        max_len = [indices[ds, wind, el, rep, 2] - indices[ds, wind, el, rep, 0] for rep in
+                                   range(np.shape(indices)[3])]
+                        repetitions = np.full((np.shape(indices)[3], np.max(max_len).astype("int64")), np.nan)
+                        for rep in range(np.shape(indices)[3]):
+                            repetitions[rep, :int(max_len[rep])] = trace[int(indices[ds, wind, el, rep, 0]):int(
+                                indices[ds, wind, el, rep, 2])]
+                        mean_rep = np.nanmean(repetitions, axis=0)
+                        cell_mean.extend(mean_rep)
+                        # save indices
+                        if save_idx:
+                            mean_best_cells_ind[ds, wind, el, 0] = len(cell_mean) - len(mean_rep)
+                            mean_best_cells_ind[ds, wind, el, 1] = len(cell_mean)
+        mean_best_cells.append(cell_mean)
+        save_idx = False
+    mean_best_cells = np.array(mean_best_cells)
+    return mean_best_cells, mean_best_cells_ind
 
 # function of regressor curve (for convolution), Credits to Carina
 def CIRF(regressor, n_ca_frames, tau=1.6):
@@ -526,6 +566,99 @@ def z_score_comp(chosen_cells, break_phases, tail_length=5):
             z_score_cells[cell, frame_idx] = (frame - cell_mean) / cell_std
     return z_score_cells, mean_std
 
+# function to calculate Area under the curve for all cells in each condition
+def get_AUCs(mean_best_cells, mean_best_cells_ind, num_stim):
+    # pre allocation
+    aucs_best_cells = np.empty((np.shape(mean_best_cells)[0], num_stim))
+
+    # iterate over cells
+    for cell in range(np.shape(aucs_best_cells)[0]):
+        cond_counter = 0
+        # iterate over all dot sizes
+        for ds in range(np.shape(mean_best_cells_ind)[0]):
+            for wind in range(np.shape(mean_best_cells_ind)[1]):
+                for el in range(np.shape(mean_best_cells_ind)[2]):
+                    if not np.isnan(mean_best_cells_ind[ds, wind, el]).any():
+                        aucs_best_cells[cell, cond_counter] = np.trapz(mean_best_cells[cell,
+                                                                       int(mean_best_cells_ind[ds, wind, el, 0]):
+                                                                       int(mean_best_cells_ind[ds, wind, el, 1])])
+                        cond_counter += 1
+    return aucs_best_cells
+
+# function to generate stimulus masks for each condition
+def stimulus_mask(indices, all_windows, all_dot_sizes, window_width, num_el):
+    # pre allocation
+    masks = []
+    el_zero = 90  # identify where in mask is 0° elevation
+
+    # iterate over dot sizes
+    for ds in range(np.shape(indices)[0]):
+        ds_masks = np.zeros((np.shape(indices)[1], num_el[ds], np.nanmax(all_windows[1:, :]) * 4, window_width * 2))
+        # iterate over windows
+        for window in range(np.shape(indices)[1]):
+            # iterate over elevations
+            elevations_wind = np.linspace(all_windows[1, window], all_windows[2, window], num_el[ds], endpoint=True).astype("int64")
+            for el in range(np.shape(elevations_wind)[0]):
+                # set azimuth range
+                left_lim = all_windows[0, window] + window_width - int(all_dot_sizes[0, ds] / 2)
+                right_lim = all_windows[0, window] + window_width + window_width + int(all_dot_sizes[0, ds] / 2)
+                azimuth = np.arange(left_lim, right_lim).astype("int64")
+                # adjust negative indices
+                azimuth[azimuth < 0] = 360 + azimuth[azimuth < 0]
+                azimuth[azimuth >= 360] = azimuth[azimuth >= 360] - 360
+
+                # set elevation range
+                upp_lim = el_zero - elevations_wind[el] - int(all_dot_sizes[0, ds] / 2)
+                low_lim = el_zero - elevations_wind[el] + int(all_dot_sizes[0, ds] / 2)
+                elevation = np.arange(upp_lim, low_lim, 1)
+                # iterate over elevations and set window to 1
+                for ell in elevation:
+                    ds_masks[window, el, ell, azimuth] = 1
+        masks.append(ds_masks)
+    return masks
+
+# function to weight the generated masks for all cells
+def generate_rf(masks, aucs_best_cells, best_cells):
+    print("weight the computed stimuli masks with AUC of cells")
+    # pre allocation
+    rf_matrices = np.zeros((np.shape(best_cells)[0], 2, np.shape(masks[0])[2], np.shape(masks[0])[3]))
+
+    # iterate over all cells
+    for cell in range(np.shape(best_cells)[0]):
+        rf_cells = [[], []]
+        cond_counter = 0
+        # iterate over dot sizes
+        for ds in range(len(masks)):
+            mask_ds = masks[ds]
+            # iterate over windows
+            for window in range(np.shape(mask_ds)[0]):
+                # iterate over elevations
+                for el in range(np.shape(mask_ds)[1]):
+
+                    current_mask = mask_ds[window, el, :, :]
+
+                    current_auc = aucs_best_cells[cell, cond_counter]
+                    rf_cond = current_mask * current_auc
+                    rf_cells[ds].append(rf_cond)
+                    cond_counter += 1
+        rf_matrices[cell, 0, :, :] = np.mean(np.dstack(rf_cells[0]), axis=2)
+        rf_matrices[cell, 1, :, :] = np.mean(np.dstack(rf_cells[1]), axis=2)
+    return rf_matrices
+
+# function to get RF center (defined as maximum)
+def get_rf_center(rf_matrices):
+    # pre allocation
+    rf_centers = np.zeros((2, np.shape(rf_matrices)[1], np.shape(rf_matrices)[0]))
+    # iterate over cells
+    for cell in range(np.shape(rf_matrices)[0]):
+        # iterate over dot sizes
+        for ds in range(np.shape(rf_matrices)[1]):
+            # get index (as x & y coordinates) of maximum entry = RF center
+            current_matrix = rf_matrices[cell, ds, :, :]
+            rf_centers[0, ds, cell], rf_centers[1, ds, cell] = np.unravel_index(np.argmax(current_matrix),
+                                                                                np.shape(current_matrix))
+    return rf_centers
+
 # function to make plots more aesthetic
 def plot_beautiful(ax, xmin=None, xmax=None, ymin=None, ymax=None, step=None,
                    xlabel="", ylabel="", title="", legend=True):
@@ -541,15 +674,116 @@ def plot_beautiful(ax, xmin=None, xmax=None, ymin=None, ymax=None, step=None,
         # move legend to right & outside of plot
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., markerscale=5)
 
+# function to make stimulus plot for pixel plot
+def extract_reg(time_sorting, time_sorted_cells, all_regressors_conv, regbuffer=0):
+    # pre allocation
+    extracted_regressors = np.zeros((np.shape(time_sorting)[0], np.shape(time_sorted_cells)[1]))
+    idx_counter = 0
+    # iterate over stimulus conditions
+    for reg in range(np.shape(time_sorting)[0]):
+        regressor = all_regressors_conv[reg]
+        # iterate over repetitions
+        for rep in range(np.shape(time_sorting)[2]):
+            start = time_sorting[reg, 0, rep].astype("int64")
+            end = time_sorting[reg, 1, rep].astype("int64")
+            interval = end - start
+            regressor_a = regressor[start - regbuffer:end + regbuffer]
+            # if at end of cell trace
+            if np.shape(extracted_regressors)[1] < (idx_counter - regbuffer + len(regressor_a)):
+                limit = (idx_counter - regbuffer + len(regressor_a)) - np.shape(extracted_regressors)[1]
+                placeholder = len(extracted_regressors[reg, idx_counter - regbuffer:idx_counter + limit])
+                extracted_regressors[reg, idx_counter - regbuffer:idx_counter + limit] = regressor_a[0:placeholder]
+            else:
+                extracted_regressors[reg, idx_counter - regbuffer:idx_counter + interval + regbuffer] = regressor_a
+                idx_counter += len(regressor_a) - regbuffer
+    return extracted_regressors
+
 # function for pixel plot
-def pixel_plot(time_sorted_cells, cbar_label, title, cmap="PiYG"):
-    fig, axs = plt.subplots()
-    pixelplot = axs.imshow(time_sorted_cells, cmap=cmap)
-    # Adjust Plot
-    axs.set_xlabel("Time [s]")
-    axs.set_ylabel("Cells")
-    axs.set_title(title)
-    fig.colorbar(pixelplot)
+def pixel_plot(time_sorted_cells, frame_rate, conditions, time_sorting, line_counter, extracted_regressors,
+               c, cmap="hot", clim_factor=0.5):
+    # pre allocation
+    labels = []
+    show_line = False
+    pixel_ticks = []
+    pixel_labels = []
+    trace_label = []
+    # redefine time axis
+    time = (np.linspace(0, np.shape(time_sorted_cells)[1] / frame_rate)).astype("int64")
+    x = np.arange(0, np.shape(time_sorted_cells)[1])
+    dot_interval = [[0], []]
+    # get list of conditions
+    split_all = [i.split("_") for i in conditions]
+
+    # create figure
+    fig = plt.figure()
+    fig.set_figheight(4)
+    fig.set_figwidth(8)
+    # create grid for different subplots
+    spec = grid.GridSpec(ncols=2, nrows=2, width_ratios=[3, .05], wspace=.2, hspace=0.00, height_ratios=[1, .2])
+    pixelplot = fig.add_subplot(spec[0])
+    box_trace = fig.add_subplot(spec[2])
+
+    # plot pixelplot
+    im = pixelplot.imshow(time_sorted_cells, cmap="hot")
+    im.set_clim(vmin=np.nanmin(time_sorted_cells), vmax=np.nanmax(time_sorted_cells) * clim_factor)
+
+    # iterate over all Conditions
+    for line in range(len(conditions)):
+        split_conds = split_all[line]
+        color = c[line]
+
+        # get start and end indices of all reps for this condition
+        starts = time_sorting[line, 0, :].astype("int64")
+        ends = time_sorting[line, 1, :].astype("int64")
+
+        if split_conds[0] == "big":
+            if split_conds[2] == "3":
+                show_line = True
+                dot_interval[0].append(line_counter[line])
+        elif split_conds[0] == "small":
+            if split_conds[2] == "7":
+                show_line = True
+                dot_interval[1].append(line_counter[line])
+        if show_line:
+            pixelplot.axvline(line_counter[line], ymin=0, ymax=np.shape(time_sorted_cells)[0], linestyle="--",
+                              color=color,
+                              linewidth=2)
+            pixel_ticks.append(line_counter[line].astype("int64"))
+            pixel_labels.append(f"{split_conds[0]} {split_conds[1]}")
+            trace_label.append((line_counter[line] / frame_rate).astype("int64"))
+
+            box_trace.axvline(line_counter[line], ymin=0, ymax=np.nanmax(extracted_regressors) + 1, linestyle="--",
+                              color=color,
+                              linewidth=2)
+        box_trace.plot(x, extracted_regressors[line, :], color=color)
+        show_line = False
+
+    box_trace.axhline(0, xmin=0, xmax=np.shape(extracted_regressors)[1], color="black", linewidth=1.5)
+
+    # shade areas: big dot
+    box_trace.fill_between(x=[min(dot_interval[0]), max(dot_interval[0])],
+                           y1=[np.nanmax(extracted_regressors) + 1, np.nanmax(extracted_regressors) + 1],
+                           color=[.7, .3, .69, .2])
+    # shade areas: smol dot
+    box_trace.fill_between(x=[max(dot_interval[0]), max(dot_interval[1])],
+                           y1=[np.nanmax(extracted_regressors) + 1, np.nanmax(extracted_regressors) + 1],
+                           color=[.7, .48, .3, .2])
+
+    # adjust plots
+    pixelplot.set_ylabel("Cells", labelpad=20)
+    pixelplot.set_xlim([time[0], time[-1]])
+    pixelplot.set_xticks(ticks=pixel_ticks[:], labels=pixel_labels[:])
+    pixelplot.spines[["top", "right"]].set_visible(False)  # toggle off top & right ax spines
+
+    box_trace.set_xlim([time[0], time[-1]])
+    box_trace.set_xlabel("Relative Time [s]", labelpad=20)
+    box_trace.spines[["top", "right"]].set_visible(False)  # toggle off top & right ax spines
+    box_trace.set_xticks(ticks=pixel_ticks[:], labels=trace_label[:])
+
+    # cbar
+    cax = fig.add_subplot(spec[1])
+    cbar = plt.colorbar(im, cax=cax)
+    cbar.set_label("Z-Score", labelpad=25)
     return fig
 
 # Function for Progressbar, Credits to David

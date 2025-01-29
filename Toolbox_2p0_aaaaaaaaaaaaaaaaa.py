@@ -1,3 +1,4 @@
+__author__ = "Natalie"
 # importing
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as grid
@@ -74,37 +75,26 @@ def adjust_frames(io, F):
             plt.show(block=False)
     return frame_times
 
-def extract_mov_dot(datatable):
-    """
-    extracts all phases and their data containing a visual name 'SingleDotRotatingBackAndForth'
-    and creates a new dictionary only containing these
-
-    Parameters
-    ----------
-    datatable : dict
-        display file after loading using natalies load_hdf5 function
-
-    Returns
-    -------
-    valid_data : dict
-        contains all phases with moving dot trials
-
-    """
-    print("extracting moving dot phases")
-    # get phases of interest (remove all lines that are interesting)
-    valid_phases = np.ones(len(datatable))
-    for i in range(len(datatable)):  # loop over all phases
-        if datatable["phase" + str(i)]['__visual_name'] != 'SingleDotRotatingBackAndForth':
-            valid_phases[i] = 0  # get the indices of all phases
-    valid_indices = np.where(valid_phases == True)[0]  # get the indices of the phases with moving dots
-
+# function to extract data from display file: only necessary phases + corresponding break phases
+def extract_mov_dot(datatable, desired_phase="SingleDotRotatingBackAndForth"):
+    print("Extracting Moving Dot Phases")
+    # pre allocation
     valid_data = {}
-    for i in range(min(valid_indices) - 1, max(valid_indices) + 1):  # loop over valid phases
-        valid_data[f"phase{i}"] = datatable[f"phase{i}"]  # add keys and the data behind to the new dictionary
+    valid_phases = np.zeros((len(datatable)))
+    # iterate over all phases
+    for i in range(len(datatable)):
+        # extract if current phase is desired phase
+        if datatable["phase" + str(i)]["__visual_name"] == desired_phase:
+            valid_phases[i] = 1
+    # identify indices of desired phases
+    valid_indices = np.where(valid_phases == True)[0]
+    # iterate over desired phases + break phase before and after this
+    for i in range(min(valid_indices) - 1, max(valid_indices) + 1):
+        valid_data[f"phase{i}"] = datatable[f"phase{i}"]
     return valid_data
 
 # function to split Display.hdf5 data down to switching directions
-def extract_version2(valid_data, all_dot_sizes, all_windows, frame_times):
+def extract_data(valid_data, all_dot_sizes, all_windows, frame_times):
     valid_phase_names = list(valid_data.keys())
     # pre allocation
     time_points = np.full((2, 4, 7, 3, 3), np.nan)
@@ -153,7 +143,7 @@ def extract_version2(valid_data, all_dot_sizes, all_windows, frame_times):
     return time_points, phase_names, indices, break_phases
 
 # function to get sorting indices for cells in their best response to stimuli
-def get_sort_cells(indices, chosen_cells, num_conds, conds_dotsizes, conds_windows, conds_elevations):
+def get_sort_cells_max(indices, chosen_cells, num_conds, conds_dotsizes, conds_windows, conds_elevations):
     # pre allocation
     conditions = []
     for_sorting = np.zeros((np.shape(chosen_cells)[0], 3, num_conds))
@@ -187,25 +177,36 @@ def get_sort_cells(indices, chosen_cells, num_conds, conds_dotsizes, conds_windo
                         for_sorting[cell, rep, split_counter] = np.nanmean(np.array(placeholder))
                     split_counter += 1
     # peak of average dff over condition: 40 values per cell
-    for_sorting_el = np.nanmax(for_sorting, axis=1)
+    for_sorting_el = np.nanmax(np.abs(for_sorting), axis=1)
     # arg peak of peak mean dff: indices of condition the cell correlates best to
-    cell_sorting = np.nanargmax(for_sorting_el, axis=1)
-    return cell_sorting, time_sorting, conditions
+    max_sorting = np.nanargmax(for_sorting_el, axis=1)
+    return max_sorting, time_sorting, conditions
+
+# function to get sorting indices for cells in their best correlation to stimuli
+def get_sort_cells_corr(chosen_cells, best_cells, corr_array):
+    # pre allocation
+    corr_sorting = np.zeros((np.shape(chosen_cells)[0]))
+    # iterate over cells
+    for cell, trace in enumerate(chosen_cells):
+        # get current cell's correlation coefficients
+        correlations = corr_array[best_cells[cell], :]
+        # identify position of max absolute correlation coefficient
+        corr_sorting[cell] = np.argmax(correlations)
+    return corr_sorting
 
 # function to sort cells in their best response to stimuli
 def sort_cells(sorting, num_conds, chosen_cells):
     # pre allocation
     sorted_cells = list([] * num_conds)
     amount_cells = np.zeros((num_conds))
-    sorted_cells_idx = list([] * num_conds)
-
+    placeholder = list([] * num_conds)
     # iterate over all possible conditions of the stimulus
     for cond in range(num_conds):
         # find how many cells were sorted to this condition
         amount_cells[cond] = np.shape(np.where(sorting == cond))[1]
         # get indices in sorting of cells sorted to this condition
         ind_cells = np.where(sorting == cond)[0].astype("int64")
-        sorted_cells_idx.append(ind_cells)
+        placeholder.append(ind_cells)
         # only continue if there are cells sorted to this condition
         if amount_cells[cond] > 0:
             # iterate over relevant cells
@@ -214,12 +215,12 @@ def sort_cells(sorting, num_conds, chosen_cells):
                 sorted_cells.append(get_cell)
     # rewrite as array
     sorted_cells = np.array(sorted_cells)
-    max_num_cell = int(max([np.shape(sorted_cells_idx[i]) for i in range(len(sorted_cells_idx))])[0])
-    placeholder = np.full((len(sorted_cells_idx), max_num_cell), np.nan)
+    max_num_cell = int(max([np.shape(placeholder[i]) for i in range(len(placeholder))])[0])
+    sorted_cells_idx = np.full((len(placeholder), max_num_cell), np.nan)
     for cond in range(num_conds):
-        am_cells = int(np.shape(sorted_cells_idx[cond])[0])
-        placeholder[cond, :am_cells] = sorted_cells_idx[cond]
-    return sorted_cells, placeholder
+        am_cells = int(np.shape(placeholder[cond])[0])
+        sorted_cells_idx[cond, :am_cells] = placeholder[cond]
+    return sorted_cells, sorted_cells_idx
 
 # function to sort time dimension into stimuli
 def sort_times(sorted_cells, time_sorting):
